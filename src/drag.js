@@ -1,5 +1,5 @@
 /** @file First-pass drag prototype for accessories from the tray. */
-import { Box3, Plane, Raycaster, Sphere, Vector2, Vector3 } from 'three';
+import { Box3, MathUtils, Plane, Raycaster, Sphere, Vector2, Vector3 } from 'three';
 import { getModelMeta, getModelRegistry } from './loaders.js';
 
 /**
@@ -62,18 +62,23 @@ export function initDrag(options) {
     clone.visible = true;
     scene.add(clone);
 
+    const finalScale = clone.scale.x;
+
+    const plane = makePlane(camera, baseAnchor);
     active = {
       model: clone,
-      plane: makePlane(camera, baseAnchor),
+      plane,
       thumbEl: target,
       objectId,
-      scale: relativeScale(accessory, baseSize, baseRadius, registryEntry.radius),
+      finalScale,
+      startScale: computeStartScale(registryEntry.radius, planeDistance(camera, plane), renderer, camera, target),
       startTime: null,
       returning: false
     };
 
-    if (active.scale != null) {
-      clone.scale.setScalar(active.scale);
+    if (active.startScale != null) {
+      clone.scale.setScalar(finalScale * active.startScale);
+      animateScale(clone, active.finalScale, active.startScale, 1, 200);
     }
 
     updatePointerFromEvent(event);
@@ -95,7 +100,7 @@ export function initDrag(options) {
       scene.remove(active.model);
       active = null;
       interaction.enable();
-    });
+    }, active.startScale ?? 0.25);
   }
 
   function updatePointerFromEvent(event) {
@@ -119,14 +124,17 @@ export function initDrag(options) {
     }
   }
 
-  function animateReturn(target, onComplete) {
+  function animateReturn(target, onComplete, targetScaleFactor = 0.25) {
     const duration = 250;
     const start = performance.now();
     const from = active.model.position.clone();
+    const startScale = active.finalScale;
 
     function step(now) {
       const t = Math.min(1, (now - start) / duration);
       active.model.position.lerpVectors(from, target, t);
+      const scaleFactor = MathUtils.lerp(1, targetScaleFactor, t);
+      active.model.scale.setScalar(startScale * scaleFactor);
       if (t < 1) {
         requestAnimationFrame(step);
       } else {
@@ -153,6 +161,11 @@ export function initDrag(options) {
 
     const point = cam.position.clone().add(normal.clone().multiplyScalar(1));
     return new Plane().setFromNormalAndCoplanarPoint(normal, point);
+  }
+
+  function activePlaneDistance(cam, anchor) {
+    const plane = makePlane(cam, anchor);
+    return Math.abs(plane.distanceToPoint(cam.position)) || 1;
   }
 
   function worldPointFromElementCenter(el, plane) {
@@ -195,4 +208,32 @@ function computeBaseAnchor(baseModel) {
   const sphere = new Sphere();
   box.getBoundingSphere(sphere);
   return { center: sphere.center.clone(), radius: sphere.radius || 1 };
+}
+
+function computeStartScale(accessoryRadius, planeDistance, renderer, camera, thumbEl) {
+  if (!accessoryRadius || accessoryRadius <= 0) return 0.25;
+  const rect = thumbEl.getBoundingClientRect();
+  const viewportHeight = renderer.domElement.clientHeight || window.innerHeight || 1;
+  const worldPerPixel =
+    (2 * planeDistance * Math.tan(MathUtils.degToRad(camera.fov) / 2)) / viewportHeight;
+  const desiredRadius = Math.max((rect.height * worldPerPixel) / 2, 0.01);
+  const factor = desiredRadius / accessoryRadius;
+  return MathUtils.clamp(factor, 0.05, 1);
+}
+
+function planeDistance(cam, plane) {
+  return Math.abs(plane.distanceToPoint(cam.position)) || 1;
+}
+
+function animateScale(model, finalScale, fromFactor, toFactor, duration) {
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const factor = MathUtils.lerp(fromFactor, toFactor, t);
+    model.scale.setScalar(finalScale * factor);
+    if (t < 1) {
+      requestAnimationFrame(step);
+    }
+  }
+  requestAnimationFrame(step);
 }
