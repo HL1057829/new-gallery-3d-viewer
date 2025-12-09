@@ -1,5 +1,14 @@
 /** @file Generic loader for scene models based on config. */
-import { Box3, Sphere } from 'three';
+import {
+  Box3,
+  Color,
+  ConeGeometry,
+  Mesh,
+  MeshBasicMaterial,
+  Quaternion,
+  Sphere,
+  Vector3
+} from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const socketRegistry = [];
@@ -59,8 +68,9 @@ export async function loadModel(scene, options = {}) {
     if (addToScene && scene) {
       scene.add(model);
     }
+    model.updateMatrixWorld(true);
     registerModel(label, modelPath, model);
-    collectSockets(model, label);
+    collectSockets(model, label, scene, options?.debug?.showSocketHelpers);
     console.info(`Loaded model "${label}" from ${modelPath}`);
     return model;
   } catch (error) {
@@ -130,7 +140,7 @@ async function preflightAsset(modelPath, label, addToScene) {
   }
 }
 
-function collectSockets(model, objectId) {
+function collectSockets(model, objectId, scene, showHelpers = false) {
   // Remove stale entries for this objectId before adding new ones.
   for (let i = socketRegistry.length - 1; i >= 0; i -= 1) {
     if (socketRegistry[i].objectId === objectId) {
@@ -142,16 +152,36 @@ function collectSockets(model, objectId) {
   model.traverse((node) => {
     if (!node?.name || typeof node.name !== 'string') return;
     if (!node.name.startsWith('socket_')) return;
-    sockets.push({ objectId, socketId: node.name, threeJsNode: node });
+    const role = node.name.includes('socket_p') ? 'parent' : node.name.includes('socket_c') ? 'child' : 'unknown';
+    const position = new Vector3();
+    const quaternion = new Quaternion();
+    node.updateWorldMatrix?.(true, false);
+    node.getWorldPosition(position);
+    node.getWorldQuaternion(quaternion);
+    const entry = {
+      objectId,
+      socketId: node.name,
+      role,
+      position: [position.x, position.y, position.z],
+      quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
+      threeJsNode: node
+    };
+    sockets.push(entry);
+
+    if (showHelpers && scene && node.parent) {
+      attachSocketHelper(node, role, scene, objectId);
+    }
   });
 
   socketRegistry.push(...sockets);
   if (sockets.length > 0) {
-    console.info(
-      `Discovered ${sockets.length} sockets on "${objectId}": ${sockets
-        .map((s) => s.socketId)
-        .join(', ')}`
-    );
+    const parents = sockets.filter((s) => s.role === 'parent').map((s) => s.socketId);
+    const children = sockets.filter((s) => s.role === 'child').map((s) => s.socketId);
+    console.info(`Socket inventory for "${objectId}"`, {
+      parents,
+      children,
+      sockets: sockets.map(({ threeJsNode, ...rest }) => rest)
+    });
   }
 }
 
@@ -162,4 +192,17 @@ function registerModel(id, modelPath, model) {
   const radius = Number.isFinite(sphere.radius) && sphere.radius > 0 ? sphere.radius : 1;
 
   modelRegistry.set(id, { modelPath, model, radius });
+}
+
+function attachSocketHelper(node, role, scene, objectId) {
+  const color = role === 'parent' ? new Color(0xff3333) : new Color(0x33ff66);
+  const scale = node.parent ? node.parent.worldToLocal(new Vector3(1, 1, 1)).length() : 1;
+  const markerSize = 0.02 * scale;
+  const geometry = new ConeGeometry(markerSize, markerSize * 2, 4, 1, false);
+  geometry.rotateY(Math.PI / 2); // align one base corner with +Z
+  const material = new MeshBasicMaterial({ color });
+  const helper = new Mesh(geometry, material);
+  helper.name = `helper_${objectId}_${node.name}`;
+  helper.scale.set(1, 1, 1.5); // slightly stretch along +Z to emphasize socket orientation
+  node.add(helper);
 }

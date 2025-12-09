@@ -10,7 +10,7 @@ import { initDrag } from './drag.js';
 (async () => {
   const { base, bases, accessories, debug } = await loadObjectConfig();
   const { scene, renderer, camera } = createScene(base.scene);
-  const model = await loadModel(scene, base);
+  const model = await loadModel(scene, { ...base, debug });
   if (!model) {
     console.error('Failed to load base model; aborting scene setup.');
     return;
@@ -20,10 +20,10 @@ import { initDrag } from './drag.js';
   const baseMeta = getModelMeta(base.name);
   const baseRadius = Number.isFinite(baseMeta?.radius) && baseMeta.radius > 0 ? baseMeta.radius : 1;
 
-  const loadedAccessories = await preloadAccessories(scene, accessories, baseSize, baseRadius);
+  const loadedAccessories = await preloadAccessories(scene, accessories, baseSize, baseRadius, debug);
   initTray({ accessories: loadedAccessories });
 
-  preloadRemainingObjects(scene, bases, accessories, base.name);
+  preloadRemainingObjects(scene, bases, accessories, base.name, baseSize, debug);
 
   // Fit camera to model with optional portrait scaling
   const baseCameraZ = camera.position.z;
@@ -49,7 +49,8 @@ import { initDrag } from './drag.js';
     accessories: loadedAccessories,
     baseSize,
     baseRadius,
-    baseModel: model
+    baseModel: model,
+    baseName: base.name
   });
 
   let previousTime = 0;
@@ -63,22 +64,25 @@ import { initDrag } from './drag.js';
   });
 })();
 
-function preloadRemainingObjects(scene, bases, accessories, displayedBaseName) {
+function preloadRemainingObjects(scene, bases, accessories, displayedBaseName, baseSize, debug) {
   const remainingBases = bases.filter((entry) => entry.name !== displayedBaseName);
   if (remainingBases.length === 0) return;
 
   Promise.allSettled(
-    remainingBases.map((entry) =>
-      loadModel(scene, {
+    remainingBases.map((entry) => {
+      const scale = scaleForEntry(entry, baseSize);
+      return loadModel(scene, {
         ...entry,
+        ...(scale != null ? { scale } : {}),
         addToScene: false,
-        visible: false
-      })
-    )
+        visible: false,
+        debug
+      });
+    })
   );
 }
 
-async function preloadAccessories(scene, accessories, baseSize, baseRadius) {
+async function preloadAccessories(scene, accessories, baseSize, baseRadius, debug) {
   if (!accessories || accessories.length === 0) return [];
 
   const results = await Promise.all(
@@ -86,7 +90,8 @@ async function preloadAccessories(scene, accessories, baseSize, baseRadius) {
       const model = await loadModel(scene, {
         ...entry,
         addToScene: false,
-        visible: false
+        visible: false,
+        debug
       });
       if (!model) return null;
 

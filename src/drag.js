@@ -24,7 +24,8 @@ export function initDrag(options) {
     accessories = [],
     baseSize = 1,
     baseRadius = 1,
-    baseModel
+    baseModel,
+    baseName
   } = options || {};
   const tray = document.getElementById('tray');
   if (!tray || !scene || !camera || !renderer || !interaction) return;
@@ -73,7 +74,8 @@ export function initDrag(options) {
       finalScale,
       startScale: computeStartScale(registryEntry.radius, planeDistance(camera, plane), renderer, camera, target),
       startTime: null,
-      returning: false
+      returning: false,
+      lastCandidatesKey: ''
     };
 
     if (active.startScale != null) {
@@ -89,6 +91,7 @@ export function initDrag(options) {
     if (!active || active.returning) return;
     updatePointerFromEvent(event);
     updateModelPosition();
+    logSnapCandidates();
   }
 
   function onPointerUp(event) {
@@ -185,6 +188,37 @@ export function initDrag(options) {
     }
     return raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(2));
   }
+
+  function logSnapCandidates() {
+    if (!active || !baseModel) return;
+    const childSockets = collectSocketsWorld(active.model, 'child');
+    const parentSockets = collectSocketsWorld(baseModel, 'parent');
+    const threshold = baseRadius > 0 ? baseRadius * 0.25 : 0.3;
+
+    const candidates = [];
+    childSockets.forEach((child) => {
+      let best = null;
+      parentSockets.forEach((parent) => {
+        const dist = child.position.distanceTo(parent.position);
+        if (dist <= threshold) {
+          if (!best || dist < best.distance) {
+            best = { parentId: parent.socketId, childId: child.socketId, distance: dist };
+          }
+        }
+      });
+      if (best) candidates.push(best);
+    });
+
+    const key = JSON.stringify(candidates);
+    if (key !== active.lastCandidatesKey) {
+      active.lastCandidatesKey = key;
+      if (candidates.length > 0) {
+        console.info('Snap candidates', { accessory: active.objectId, base: baseName, candidates });
+      } else {
+        console.info('Snap candidates', { accessory: active.objectId, base: baseName, candidates: [] });
+      }
+    }
+  }
 }
 
 function relativeScale(entry, baseSize, baseRadius, accessoryRadius) {
@@ -221,9 +255,9 @@ function computeStartScale(accessoryRadius, planeDistance, renderer, camera, thu
   return MathUtils.clamp(factor, 0.05, 1);
 }
 
-function planeDistance(cam, plane) {
-  return Math.abs(plane.distanceToPoint(cam.position)) || 1;
-}
+  function planeDistance(cam, plane) {
+    return Math.abs(plane.distanceToPoint(cam.position)) || 1;
+  }
 
 function animateScale(model, finalScale, fromFactor, toFactor, duration) {
   const start = performance.now();
@@ -236,4 +270,21 @@ function animateScale(model, finalScale, fromFactor, toFactor, duration) {
     }
   }
   requestAnimationFrame(step);
+}
+
+function collectSocketsWorld(root, role) {
+  const sockets = [];
+  root.updateMatrixWorld(true);
+  root.traverse((node) => {
+    if (!node?.name || typeof node.name !== 'string') return;
+    if (!node.name.startsWith('socket_')) return;
+    const isParent = node.name.includes('socket_p');
+    const isChild = node.name.includes('socket_c');
+    if (role === 'parent' && !isParent) return;
+    if (role === 'child' && !isChild) return;
+    const pos = new Vector3();
+    node.getWorldPosition(pos);
+    sockets.push({ socketId: node.name, position: pos });
+  });
+  return sockets;
 }

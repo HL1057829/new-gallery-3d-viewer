@@ -28,7 +28,7 @@ body {
   justify-content: space-evenly;
   align-items: stretch;
   height: 100vh;
-  width: min(100px, 25vw);
+  width: min(100px, 200px);
   padding: 15px;
   position: absolute;
   top: 0;
@@ -48,6 +48,29 @@ body {
   margin: 0;
   background: transparent;
   pointer-events: auto;
+  position: relative;
+  overflow: visible;
+}
+
+.tray-tooltip {
+  position: fixed;
+  z-index: 4;
+  background: rgba(0, 0, 0, 0.85);
+  color: #f5f5f5;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -8px);
+  transition: opacity 120ms ease 0s;
+}
+
+.tray-tooltip.visible {
+  opacity: 1;
+  transition-delay: 0.5s;
 }
 
 canvas {
