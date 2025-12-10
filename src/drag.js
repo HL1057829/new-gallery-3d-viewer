@@ -1,5 +1,5 @@
 /** @file First-pass drag prototype for accessories from the tray. */
-import { Box3, MathUtils, Plane, Quaternion, Raycaster, Sphere, Vector2, Vector3 } from 'three';
+import { Box3, MathUtils, Matrix4, Plane, Quaternion, Raycaster, Sphere, Vector2, Vector3 } from 'three';
 import { getModelMeta, getModelRegistry } from './loaders.js';
 
 /**
@@ -26,7 +26,6 @@ export function initDrag(options) {
     baseRadius = 1,
     baseModel,
     baseName,
-    visibilityIntervalMs = 100,
     attachedParents = []
   } = options || {};
   const tray = document.getElementById('tray');
@@ -37,9 +36,7 @@ export function initDrag(options) {
   const pointer = new Vector2();
   let active = null;
   const baseAnchor = computeBaseAnchor(baseModel);
-  const visibilityCache = { time: 0, map: new Map() };
-  const VISIBILITY_INTERVAL_MS = visibilityIntervalMs || 0;
-  let lastViewHash = '';
+  let attachedSources = normalizeParentSources(attachedParents);
 
   tray.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
@@ -68,7 +65,6 @@ export function initDrag(options) {
     clone.visible = true;
     scene.add(clone);
 
-    const attachedSources = normalizeParentSources(attachedParents);
     const parentSources = [{ name: baseName, model: baseModel }, ...attachedSources];
 
     const allowedSockets = accessory?.allowedSockets;
@@ -88,7 +84,8 @@ export function initDrag(options) {
       lastCandidatesKey: 'none',
       highlighted: null,
       parentSources,
-      allowedSockets
+      allowedSockets,
+      bestCandidate: null
     };
 
     if (active.startScale != null) {
@@ -109,14 +106,41 @@ export function initDrag(options) {
 
   function onPointerUp(event) {
     if (!active) return;
-    active.returning = true;
     updatePointerFromEvent(event);
-    const targetPosition = worldPointFromElementCenter(active.thumbEl, active.plane);
-    animateReturn(targetPosition, () => {
-      scene.remove(active.model);
-      active = null;
-      interaction.enable();
-    }, active.startScale ?? 0.25);
+    // Refresh candidate at release in case it changed on the final frame
+    logSnapCandidates();
+    const candidate = active.bestCandidate || active.lastGoodCandidate;
+
+    if (candidate) {
+      try {
+        snapToParent(candidate);
+      } catch (error) {
+        console.error('Failed to snap accessory', error);
+        // fall back to returning if snap failed
+        const targetPosition = worldPointFromElementCenter(active.thumbEl, active.plane);
+        animateReturn(
+          targetPosition,
+          () => {
+            scene.remove(active.model);
+            clearActiveDrag();
+          },
+          active.startScale ?? 0.25
+        );
+        return;
+      }
+      clearActiveDrag();
+    } else {
+      active.returning = true;
+      const targetPosition = worldPointFromElementCenter(active.thumbEl, active.plane);
+      animateReturn(
+        targetPosition,
+        () => {
+          scene.remove(active.model);
+          clearActiveDrag();
+        },
+        active.startScale ?? 0.25
+      );
+    }
   }
 
   function updatePointerFromEvent(event) {
@@ -239,23 +263,15 @@ export function initDrag(options) {
 
     highlightParent(best?.parent);
 
+    active.bestCandidate = best || null;
+    if (best) {
+      active.lastGoodCandidate = best;
+    }
+
     const key =
       best != null ? `${best.parent.socketId}:${best.child.socketId}:${best.distance.toFixed(3)}` : 'none';
     if (key !== active.lastCandidatesKey) {
       active.lastCandidatesKey = key;
-      if (best) {
-        console.info('Snap candidate', {
-          accessory: active.objectId,
-          base: baseName,
-          candidate: {
-            parentId: best.parent.socketId,
-            childId: best.child.socketId,
-            distance: best.distance
-          }
-        });
-      } else {
-        console.info('Snap candidate', { accessory: active.objectId, base: baseName, candidate: null });
-      }
     }
   }
 
@@ -270,6 +286,74 @@ export function initDrag(options) {
       parent.helper.material.color.set(0xffd42a);
       active.highlighted = { helper: parent.helper, role: parent.role };
     }
+  }
+
+  function snapToParent(candidate) {
+    const { parent, child } = candidate;
+    if (!parent?.node || !child?.node || !active?.model) return;
+
+    parent.node.updateMatrixWorld(true);
+    child.node.updateMatrixWorld(true);
+    active.model.updateMatrixWorld(true);
+
+    const parentMatrix = parent.node.matrixWorld.clone();
+    const childLocal = child.node.matrix.clone();
+    const childLocalInv = childLocal.clone().invert();
+    const rotateY180 = new Matrix4().makeRotationY(Math.PI);
+    const targetMatrix = parentMatrix.clone().multiply(rotateY180).multiply(childLocalInv);
+
+    const pos = new Vector3();
+    const quat = new Quaternion();
+    const scl = new Vector3();
+    targetMatrix.decompose(pos, quat, scl);
+
+    const model = active.model;
+    const currentScale = model.scale.clone();
+
+    const hostRoot = getHostRoot(parent.node);
+    const localTarget = targetMatrix.clone();
+    if (hostRoot) {
+      const hostInv = new Matrix4().copy(hostRoot.matrixWorld).invert();
+      localTarget.premultiply(hostInv);
+      if (model.parent !== hostRoot) {
+        hostRoot.add(model);
+      }
+    }
+
+    const localPos = new Vector3();
+    const localQuat = new Quaternion();
+    const localScl = new Vector3();
+    localTarget.decompose(localPos, localQuat, localScl);
+
+    model.position.copy(localPos);
+    model.quaternion.copy(localQuat);
+    model.scale.copy(currentScale);
+    model.updateMatrixWorld(true);
+
+    attachedSources = [...attachedSources, { name: active.objectId, model }];
+    console.info('Attached accessory', {
+      accessory: active.objectId,
+      parentSocket: parent.socketId,
+      host: parent.hostName,
+      position: model.position.toArray(),
+      rotation: model.quaternion.toArray(),
+      scale: model.scale.toArray()
+    });
+    active.highlighted = null;
+    active.bestCandidate = null;
+  }
+
+  function getHostRoot(node) {
+    let current = node;
+    while (current.parent && !current.parent.isScene) {
+      current = current.parent;
+    }
+    return current;
+  }
+
+  function clearActiveDrag() {
+    active = null;
+    interaction.enable();
   }
 
   function isVisibleParentSocket(socket, cam, occluder) {
@@ -291,25 +375,12 @@ export function initDrag(options) {
   }
 
   function filterVisibleParents(parents, childPos, threshold, occluders) {
-    const now = performance.now();
-    const shouldRefresh = now - visibilityCache.time > VISIBILITY_INTERVAL_MS;
-
-    if (shouldRefresh) {
-      visibilityCache.map.clear();
-      visibilityCache.time = now;
-    }
-
     return parents.filter((p) => {
-      if (!shouldRefresh && visibilityCache.map.has(p.socketId)) {
-        return visibilityCache.map.get(p.socketId);
-      }
-
       const pPos = p.helper ? p.helper.getWorldPosition(new Vector3()) : p.position;
 
       // Quick reject if outside planar radius from the child
       const dist2d = planarDistance(camera, childPos, pPos);
       if (dist2d > threshold) {
-        visibilityCache.map.set(p.socketId, false);
         return false;
       }
 
@@ -317,13 +388,10 @@ export function initDrag(options) {
       const screen = projectToScreen(camera, pPos);
       const onScreen = screen.x >= 0 && screen.x <= 1 && screen.y >= 0 && screen.y <= 1;
       if (!onScreen) {
-        visibilityCache.map.set(p.socketId, false);
         return false;
       }
 
-      const visible = isVisibleParentSocket(p, camera, occluders);
-      visibilityCache.map.set(p.socketId, visible);
-      return visible;
+      return isVisibleParentSocket(p, camera, occluders);
     });
   }
 }
@@ -400,7 +468,7 @@ function collectSocketsWorld(root, role, includeHelpers = false) {
       includeHelpers && node.children
         ? node.children.find((c) => typeof c.name === 'string' && c.name.startsWith('helper_'))
         : null;
-    sockets.push({ socketId: node.name, position: pos, normal, role, helper });
+    sockets.push({ socketId: node.name, position: pos, normal, role, helper, node });
   });
   return sockets;
 }

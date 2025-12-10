@@ -142,7 +142,6 @@ export function createInteractionController(
     velocityX = rotY / safeDt; // rad/s matching final gesture speed
     velocityY = rotX / safeDt;
 
-    debugLog('pointermove', { dx, dy, rotX, rotY, dtMs, velocityX, velocityY });
   }
 
   function onPointerUp() {
