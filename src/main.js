@@ -50,7 +50,8 @@ import { initDrag } from './drag.js';
     baseSize,
     baseRadius,
     baseModel: model,
-    baseName: base.name
+    baseName: base.name,
+    visibilityIntervalMs: base?.interaction?.socketVisibilityIntervalMs
   });
 
   let previousTime = 0;

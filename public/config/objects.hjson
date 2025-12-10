@@ -58,7 +58,9 @@
 
         // Axis multipliers (dampen x more than y, etc.)
         xAxisMultiplier: 0.2,
-        yAxisMultiplier: 1.0
+        yAxisMultiplier: 1.0,
+
+        socketVisibilityIntervalMs: 500
       }
     },
 

@@ -25,7 +25,8 @@ export function initDrag(options) {
     baseSize = 1,
     baseRadius = 1,
     baseModel,
-    baseName
+    baseName,
+    visibilityIntervalMs = 100
   } = options || {};
   const tray = document.getElementById('tray');
   if (!tray || !scene || !camera || !renderer || !interaction) return;
@@ -35,6 +36,8 @@ export function initDrag(options) {
   const pointer = new Vector2();
   let active = null;
   const baseAnchor = computeBaseAnchor(baseModel);
+  const visibilityCache = { time: 0, map: new Map() };
+  const VISIBILITY_INTERVAL_MS = visibilityIntervalMs;
 
   tray.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
@@ -196,19 +199,28 @@ export function initDrag(options) {
     baseModel.updateMatrixWorld(true);
     const childSockets = collectSocketsWorld(active.model, 'child');
     const parentSockets = collectSocketsWorld(baseModel, 'parent', true);
-    const threshold = baseRadius > 0 ? baseRadius * 0.75 : 0.9;
+    const threshold = baseRadius > 0 ? baseRadius * 0.25 : 0.3;
 
+    // Only consider the first child socket for the dragged accessory
+    const child = childSockets[0];
     let best = null;
-    childSockets.forEach((child) => {
-      parentSockets.forEach((parent) => {
-        const dist = planarDistanceWithZAllowance(camera, child.position, parent.position);
-        if (dist <= threshold) {
-          if (!best || dist < best.distance) {
-            best = { parent, child, distance: dist };
+    if (child) {
+      const visibleParents = filterVisibleParents(parentSockets);
+      visibleParents.forEach((parent) => {
+        const pPos = parent.helper ? parent.helper.getWorldPosition(new Vector3()) : parent.position;
+        const distance = planarDistance(camera, child.position, pPos);
+        if (distance <= threshold) {
+          const camDistance = pPos.distanceTo(camera.position);
+          if (
+            !best ||
+            distance < best.distance ||
+            (Math.abs(distance - best.distance) < 1e-4 && camDistance < best.camDistance)
+          ) {
+            best = { parent, child, distance, camDistance };
           }
         }
       });
-    });
+    }
 
     highlightParent(best?.parent);
 
@@ -243,6 +255,33 @@ export function initDrag(options) {
       parent.helper.material.color.set(0xffd42a);
       active.highlighted = { helper: parent.helper, role: parent.role };
     }
+  }
+
+  function isVisibleParentSocket(socket, cam, occluder) {
+    const pPos = socket.helper ? socket.helper.getWorldPosition(new Vector3()) : socket.position;
+    const dir = pPos.clone().sub(cam.position);
+    const dist = dir.length();
+    if (dist <= 0) return false;
+    dir.normalize();
+    raycaster.set(cam.position, dir);
+    const hits = raycaster.intersectObject(occluder, true);
+    if (!hits || hits.length === 0) return true;
+    const hit = hits.find((h) => !h.object.name?.startsWith?.('helper_'));
+    if (!hit) return true;
+    return hit.distance >= dist - 1e-3;
+  }
+
+  function filterVisibleParents(parents) {
+    const now = performance.now();
+    if (now - visibilityCache.time > VISIBILITY_INTERVAL_MS) {
+      visibilityCache.map = new Map();
+      parents.forEach((p) => {
+        const visible = isVisibleParentSocket(p, camera, baseModel);
+        visibilityCache.map.set(p.socketId, visible);
+      });
+      visibilityCache.time = now;
+    }
+    return parents.filter((p) => visibilityCache.map.get(p.socketId) !== false);
   }
 }
 
@@ -323,13 +362,10 @@ function collectSocketsWorld(root, role, includeHelpers = false) {
   return sockets;
 }
 
-function planarDistanceWithZAllowance(camera, p1, p2, zAllowanceFactor = 0.2) {
+function planarDistance(camera, p1, p2) {
   const a = p1.clone().applyMatrix4(camera.matrixWorldInverse);
   const b = p2.clone().applyMatrix4(camera.matrixWorldInverse);
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  const planar = Math.hypot(dx, dy);
-  // If either point is closer to the camera (more negative z), allow a bit more reach.
-  const allowance = Math.max(0, -Math.min(a.z, b.z)) * zAllowanceFactor;
-  return Math.max(0, planar - allowance);
+  a.z = 0;
+  b.z = 0;
+  return a.distanceTo(b);
 }
