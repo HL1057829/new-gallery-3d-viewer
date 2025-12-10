@@ -26,7 +26,8 @@ export function initDrag(options) {
     baseRadius = 1,
     baseModel,
     baseName,
-    visibilityIntervalMs = 100
+    visibilityIntervalMs = 100,
+    attachedParents = []
   } = options || {};
   const tray = document.getElementById('tray');
   if (!tray || !scene || !camera || !renderer || !interaction) return;
@@ -67,6 +68,11 @@ export function initDrag(options) {
     clone.visible = true;
     scene.add(clone);
 
+    const attachedSources = normalizeParentSources(attachedParents);
+    const parentSources = [{ name: baseName, model: baseModel }, ...attachedSources];
+
+    const allowedSockets = accessory?.allowedSockets;
+
     const finalScale = clone.scale.x;
 
     const plane = makePlane(camera, baseAnchor);
@@ -80,7 +86,9 @@ export function initDrag(options) {
       startTime: null,
       returning: false,
       lastCandidatesKey: 'none',
-      highlighted: null
+      highlighted: null,
+      parentSources,
+      allowedSockets
     };
 
     if (active.startScale != null) {
@@ -199,14 +207,20 @@ export function initDrag(options) {
     active.model.updateMatrixWorld(true);
     baseModel.updateMatrixWorld(true);
     const childSockets = collectSocketsWorld(active.model, 'child');
-    const parentSockets = collectSocketsWorld(baseModel, 'parent', true);
+    const parentSockets = collectParentSockets(active.parentSources);
+    const occluderModels = active.parentSources.map((s) => s.model).filter(Boolean);
     const threshold = baseRadius > 0 ? baseRadius * 0.25 : 0.3;
 
     // Only consider the first child socket for the dragged accessory
     const child = childSockets[0];
     let best = null;
     if (child) {
-      const visibleParents = filterVisibleParents(parentSockets, child.position, threshold);
+      const visibleParents = filterVisibleParents(
+        filterAllowedParents(parentSockets, active.allowedSockets),
+        child.position,
+        threshold,
+        occluderModels
+      );
       visibleParents.forEach((parent) => {
         const pPos = parent.helper ? parent.helper.getWorldPosition(new Vector3()) : parent.position;
         const distance = planarDistance(camera, child.position, pPos);
@@ -265,27 +279,18 @@ export function initDrag(options) {
     if (dist <= 0) return false;
     dir.normalize();
     raycaster.set(cam.position, dir);
-    const hits = raycaster.intersectObject(occluder, true);
+    const hits = Array.isArray(occluder)
+      ? occluder.flatMap((o) => (o ? raycaster.intersectObject(o, true) : []))
+      : occluder
+        ? raycaster.intersectObject(occluder, true)
+        : [];
     if (!hits || hits.length === 0) return true;
     const hit = hits.find((h) => !h.object.name?.startsWith?.('helper_'));
     if (!hit) return true;
     return hit.distance >= dist - 1e-3;
   }
 
-  function filterVisibleParents(parents) {
-    const now = performance.now();
-    if (now - visibilityCache.time > VISIBILITY_INTERVAL_MS) {
-      visibilityCache.map = new Map();
-      parents.forEach((p) => {
-        const visible = isVisibleParentSocket(p, camera, baseModel);
-        visibilityCache.map.set(p.socketId, visible);
-      });
-      visibilityCache.time = now;
-    }
-    return parents.filter((p) => visibilityCache.map.get(p.socketId) !== false);
-  }
-
-  function filterVisibleParents(parents, childPos, threshold) {
+  function filterVisibleParents(parents, childPos, threshold, occluders) {
     const now = performance.now();
     const shouldRefresh = now - visibilityCache.time > VISIBILITY_INTERVAL_MS;
 
@@ -316,7 +321,7 @@ export function initDrag(options) {
         return false;
       }
 
-      const visible = isVisibleParentSocket(p, camera, baseModel);
+      const visible = isVisibleParentSocket(p, camera, occluders);
       visibilityCache.map.set(p.socketId, visible);
       return visible;
     });
@@ -408,7 +413,52 @@ function planarDistance(camera, p1, p2) {
   return a.distanceTo(b);
 }
 
+function normalizeParentSources(sources) {
+  if (!Array.isArray(sources)) return [];
+  return sources.map((src, index) => {
+    if (!src) return null;
+    if (src.model) return { name: src.name || `attached_${index}`, model: src.model };
+    return { name: src.name || `attached_${index}`, model: src };
+  }).filter(Boolean);
+}
+
+function collectParentSockets(sources) {
+  if (!Array.isArray(sources)) return [];
+  const parents = [];
+  sources.forEach((src) => {
+    if (!src) return;
+    parents.push(
+      ...collectSocketsWorld(src.model, 'parent', true).map((p) => ({
+        ...p,
+        hostName: src.name
+      }))
+    );
+  });
+  return parents;
+}
+
 function projectToScreen(camera, pos) {
   const ndc = pos.clone().project(camera);
   return new Vector2((ndc.x + 1) / 2, (1 - ndc.y) / 2);
+}
+
+function filterAllowedParents(parents, allowedSockets) {
+  if (!parents || parents.length === 0) return [];
+
+  // No restrictions
+  if (!allowedSockets) return parents;
+  if (Array.isArray(allowedSockets)) {
+    if (allowedSockets.length === 0) return parents;
+    const set = new Set(allowedSockets);
+    return parents.filter((p) => set.has(p.socketId));
+  }
+  const hostKeys = Object.keys(allowedSockets);
+  if (hostKeys.length === 0) return parents;
+
+  return parents.filter((p) => {
+    const allowedList = allowedSockets[p.hostName];
+    if (allowedList === undefined) return true; // no host-specific restriction
+    if (Array.isArray(allowedList) && allowedList.length === 0) return true;
+    return Array.isArray(allowedList) && allowedList.includes(p.socketId);
+  });
 }
