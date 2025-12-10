@@ -294,35 +294,46 @@ export function initDrag(options) {
 
     const model = active.model;
     const storedScale = model.scale.clone();
-    model.scale.set(1, 1, 1);
     model.updateMatrixWorld(true);
-
     parent.node.updateMatrixWorld(true);
     child.node.updateMatrixWorld(true);
-
-    const parentMatrix = parent.node.matrixWorld.clone();
-    const childLocal = child.node.matrix.clone();
-    const childLocalInv = childLocal.clone().invert();
-    const rotateY180 = new Matrix4().makeRotationY(Math.PI);
-    const targetMatrix = parentMatrix.clone().multiply(rotateY180).multiply(childLocalInv);
-
     const hostRoot = getHostRoot(parent.node);
-    const localTarget = targetMatrix.clone();
-    if (hostRoot) {
-      const hostInv = new Matrix4().copy(hostRoot.matrixWorld).invert();
-      localTarget.premultiply(hostInv);
-      if (model.parent !== hostRoot) {
-        hostRoot.add(model);
-      }
+    hostRoot?.updateMatrixWorld(true);
+
+    // Decompose child local transform (position/orientation relative to accessory).
+    const childLocalPos = new Vector3();
+    const childLocalQuat = new Quaternion();
+    child.node.matrix.decompose(childLocalPos, childLocalQuat, new Vector3());
+
+    // Desired world transform for the child socket (parent socket + 180° Y flip).
+    const rotateY180 = new Matrix4().makeRotationY(Math.PI);
+    const desiredChildWorld = parent.node.matrixWorld.clone().multiply(rotateY180);
+    const desiredChildPos = new Vector3();
+    const desiredChildQuat = new Quaternion();
+    desiredChildWorld.decompose(desiredChildPos, desiredChildQuat, new Vector3());
+
+    // Solve model rotation: R_model * R_childLocal = R_childDesired  =>  R_model = R_childDesired * inv(R_childLocal)
+    const modelQuatWorld = desiredChildQuat.clone().multiply(childLocalQuat.clone().invert());
+
+    // Solve model position so scaled, rotated child local origin lands on desired parent socket.
+    const scaledChildOffset = childLocalPos.clone().multiply(storedScale).applyQuaternion(modelQuatWorld);
+    const modelPosWorld = desiredChildPos.clone().sub(scaledChildOffset);
+
+    if (hostRoot && model.parent !== hostRoot) {
+      hostRoot.add(model);
     }
 
-    const localPos = new Vector3();
-    const localQuat = new Quaternion();
-    const localScl = new Vector3();
-    localTarget.decompose(localPos, localQuat, localScl);
+    if (hostRoot) {
+      // Convert to host-local space.
+      const hostQuat = new Quaternion();
+      hostRoot.getWorldQuaternion(hostQuat);
+      model.quaternion.copy(hostQuat.clone().invert().multiply(modelQuatWorld));
+      model.position.copy(hostRoot.worldToLocal(modelPosWorld.clone()));
+    } else {
+      model.quaternion.copy(modelQuatWorld);
+      model.position.copy(modelPosWorld);
+    }
 
-    model.position.copy(localPos);
-    model.quaternion.copy(localQuat);
     model.scale.copy(storedScale);
     model.updateMatrixWorld(true);
 
