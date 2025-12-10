@@ -292,27 +292,20 @@ export function initDrag(options) {
     const { parent, child } = candidate;
     if (!parent?.node || !child?.node || !active?.model) return;
 
+    const model = active.model;
+    const storedScale = model.scale.clone();
+    model.scale.set(1, 1, 1);
+    model.updateMatrixWorld(true);
+
     parent.node.updateMatrixWorld(true);
     child.node.updateMatrixWorld(true);
-    active.model.updateMatrixWorld(true);
 
     const parentMatrix = parent.node.matrixWorld.clone();
     const childLocal = child.node.matrix.clone();
     const childLocalInv = childLocal.clone().invert();
     const rotateY180 = new Matrix4().makeRotationY(Math.PI);
-    const scaleMatrix = new Matrix4().makeScale(
-      active.model.scale.x,
-      active.model.scale.y,
-      active.model.scale.z
-    );
-    const targetMatrix = parentMatrix.clone().multiply(rotateY180).multiply(childLocalInv).multiply(scaleMatrix);
+    const targetMatrix = parentMatrix.clone().multiply(rotateY180).multiply(childLocalInv);
 
-    const pos = new Vector3();
-    const quat = new Quaternion();
-    const scl = new Vector3();
-    targetMatrix.decompose(pos, quat, scl);
-
-    const model = active.model;
     const hostRoot = getHostRoot(parent.node);
     const localTarget = targetMatrix.clone();
     if (hostRoot) {
@@ -330,7 +323,7 @@ export function initDrag(options) {
 
     model.position.copy(localPos);
     model.quaternion.copy(localQuat);
-    model.scale.copy(localScl);
+    model.scale.copy(storedScale);
     model.updateMatrixWorld(true);
 
     attachedSources = [...attachedSources, { name: active.objectId, model }];
