@@ -69,7 +69,7 @@
       modelPath: "/assets/objects/hoon_dog/hoon_dog.glb"
       thumbnail: "/assets/objects/hoon_dog/hoon_dog_thumb.png"
       displayName: "Hoon Dog"
-      size: 16.6
+      size: 11
       sizeRank: 3
       influence: { radius: 0.1 }
       sockets: [
@@ -126,7 +126,7 @@
         { id: "socket_p_4", role: "parent", positionHint: "right temple",rotationOffset: [0, 0, 0] }
       ]
       allowedSockets: {
-        hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5"]
+        hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5", "socket_p_10"]
       }
     }
 
@@ -145,7 +145,7 @@
         { id: "socket_p_2", role: "parent", positionHint: "left cheek",  rotationOffset: [0, 0, 0] }
       ]
       allowedSockets: {
-        hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5"]
+        hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5", "socket_p_10"]
       }
     }
 
