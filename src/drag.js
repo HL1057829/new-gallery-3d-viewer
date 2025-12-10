@@ -37,7 +37,8 @@ export function initDrag(options) {
   let active = null;
   const baseAnchor = computeBaseAnchor(baseModel);
   const visibilityCache = { time: 0, map: new Map() };
-  const VISIBILITY_INTERVAL_MS = visibilityIntervalMs;
+  const VISIBILITY_INTERVAL_MS = visibilityIntervalMs || 0;
+  let lastViewHash = '';
 
   tray.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
@@ -205,7 +206,7 @@ export function initDrag(options) {
     const child = childSockets[0];
     let best = null;
     if (child) {
-      const visibleParents = filterVisibleParents(parentSockets);
+      const visibleParents = filterVisibleParents(parentSockets, child.position, threshold);
       visibleParents.forEach((parent) => {
         const pPos = parent.helper ? parent.helper.getWorldPosition(new Vector3()) : parent.position;
         const distance = planarDistance(camera, child.position, pPos);
@@ -282,6 +283,43 @@ export function initDrag(options) {
       visibilityCache.time = now;
     }
     return parents.filter((p) => visibilityCache.map.get(p.socketId) !== false);
+  }
+
+  function filterVisibleParents(parents, childPos, threshold) {
+    const now = performance.now();
+    const shouldRefresh = now - visibilityCache.time > VISIBILITY_INTERVAL_MS;
+
+    if (shouldRefresh) {
+      visibilityCache.map.clear();
+      visibilityCache.time = now;
+    }
+
+    return parents.filter((p) => {
+      if (!shouldRefresh && visibilityCache.map.has(p.socketId)) {
+        return visibilityCache.map.get(p.socketId);
+      }
+
+      const pPos = p.helper ? p.helper.getWorldPosition(new Vector3()) : p.position;
+
+      // Quick reject if outside planar radius from the child
+      const dist2d = planarDistance(camera, childPos, pPos);
+      if (dist2d > threshold) {
+        visibilityCache.map.set(p.socketId, false);
+        return false;
+      }
+
+      // Quick reject if off-screen
+      const screen = projectToScreen(camera, pPos);
+      const onScreen = screen.x >= 0 && screen.x <= 1 && screen.y >= 0 && screen.y <= 1;
+      if (!onScreen) {
+        visibilityCache.map.set(p.socketId, false);
+        return false;
+      }
+
+      const visible = isVisibleParentSocket(p, camera, baseModel);
+      visibilityCache.map.set(p.socketId, visible);
+      return visible;
+    });
   }
 }
 
@@ -368,4 +406,9 @@ function planarDistance(camera, p1, p2) {
   a.z = 0;
   b.z = 0;
   return a.distanceTo(b);
+}
+
+function projectToScreen(camera, pos) {
+  const ndc = pos.clone().project(camera);
+  return new Vector2((ndc.x + 1) / 2, (1 - ndc.y) / 2);
 }
