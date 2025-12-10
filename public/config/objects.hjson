@@ -149,24 +149,24 @@
       }
     }
 
-    piggy_face2: {
-      objClass: "accessory"
-      modelPath: "/assets/objects/piggy_face2/piggy_face2.glb"
-      thumbnail: "/assets/objects/piggy_face2/piggy_face2_thumb.png"
-      displayName: "Piggy Face"
-      size: 1.5
-      sizeRank: 2
-      influence: { radius: 0.12 }
-      sockets: [
-        { id: "socket_c_0", role: "child",  positionHint: "inside",      rotationOffset: [0, 0, 0] }
-        { id: "socket_p_0", role: "parent", positionHint: "forehead",    rotationOffset: [0, 0, 0] }
-        { id: "socket_p_1", role: "parent", positionHint: "right cheek", rotationOffset: [0, 0, 0] }
-        { id: "socket_p_2", role: "parent", positionHint: "left cheek",  rotationOffset: [0, 0, 0] }
-      ]
-      allowedSockets: {
-        hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5"]
-      }
-    }
+    // piggy_face2: {
+    //   objClass: "accessory"
+    //   modelPath: "/assets/objects/piggy_face2/piggy_face2.glb"
+    //   thumbnail: "/assets/objects/piggy_face2/piggy_face2_thumb.png"
+    //   displayName: "Piggy Face"
+    //   size: 1.5
+    //   sizeRank: 2
+    //   influence: { radius: 0.12 }
+    //   sockets: [
+    //     { id: "socket_c_0", role: "child",  positionHint: "inside",      rotationOffset: [0, 0, 0] }
+    //     { id: "socket_p_0", role: "parent", positionHint: "forehead",    rotationOffset: [0, 0, 0] }
+    //     { id: "socket_p_1", role: "parent", positionHint: "right cheek", rotationOffset: [0, 0, 0] }
+    //     { id: "socket_p_2", role: "parent", positionHint: "left cheek",  rotationOffset: [0, 0, 0] }
+    //   ]
+    //   allowedSockets: {
+    //     hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5"]
+    //   }
+    // }
 
     rabbit_ear: {
       objClass: "accessory"
@@ -203,25 +203,25 @@
       // allowedSockets omitted => any socket on any larger host
     }
 
-    bear_ear: {
-      objClass: "accessory"
-      modelPath: "/assets/objects/bear_ear/bear_ear.glb"
-      thumbnail: "/assets/objects/bear_ear/bear_ear_thumb.png"
-      displayName: "Bear Ear"
-      size: 1
-      sizeRank: 2
-      influence: { radius: 0.12 }
-      sockets: [
-        { id: "socket_c_0", role: "child",  positionHint: "inside",     rotationOffset: [0, 0, 0] }
-        { id: "socket_p_0", role: "parent", positionHint: "front top",  rotationOffset: [0, 0, 0] }
-        { id: "socket_p_1", role: "parent", positionHint: "back top",   rotationOffset: [0, 0, 0] }
-      ]
-      allowedSockets: {
-        hoon_dog:  ["socket_p_0", "socket_p_1", "socket_p_3", "socket_p_5", "socket_p_7", "socket_p_10"]
-        full_face: ["socket_p_0"]
-        piggy_face1:   ["socket_p_0"]
-      }
-    }
+    // bear_ear: {
+    //   objClass: "accessory"
+    //   modelPath: "/assets/objects/bear_ear/bear_ear.glb"
+    //   thumbnail: "/assets/objects/bear_ear/bear_ear_thumb.png"
+    //   displayName: "Bear Ear"
+    //   size: 1
+    //   sizeRank: 2
+    //   influence: { radius: 0.12 }
+    //   sockets: [
+    //     { id: "socket_c_0", role: "child",  positionHint: "inside",     rotationOffset: [0, 0, 0] }
+    //     { id: "socket_p_0", role: "parent", positionHint: "front top",  rotationOffset: [0, 0, 0] }
+    //     { id: "socket_p_1", role: "parent", positionHint: "back top",   rotationOffset: [0, 0, 0] }
+    //   ]
+    //   allowedSockets: {
+    //     hoon_dog:  ["socket_p_0", "socket_p_1", "socket_p_3", "socket_p_5", "socket_p_7", "socket_p_10"]
+    //     full_face: ["socket_p_0"]
+    //     piggy_face1:   ["socket_p_0"]
+    //   }
+    // }
 
     bear_nose: {
       objClass: "accessory"
@@ -251,34 +251,34 @@
       ]
     }
 
-    plunger2: {
-      objClass: "accessory"
-      modelPath: "/assets/objects/plunger2/plunger2.glb"
-      thumbnail: "/assets/objects/plunger2/plunger2_thumb.png"
-      displayName: "Plunger"
-      size: 1.25
-      sizeRank: 1
-      influence: { radius: 0.05 }
-      sockets: [
-        { id: "socket_c_0", role: "child", positionHint: "inside", rotationOffset: [0, 0, 0] }
-      ]
-    }
+    // plunger2: {
+    //   objClass: "accessory"
+    //   modelPath: "/assets/objects/plunger2/plunger2.glb"
+    //   thumbnail: "/assets/objects/plunger2/plunger2_thumb.png"
+    //   displayName: "Plunger"
+    //   size: 1.25
+    //   sizeRank: 1
+    //   influence: { radius: 0.05 }
+    //   sockets: [
+    //     { id: "socket_c_0", role: "child", positionHint: "inside", rotationOffset: [0, 0, 0] }
+    //   ]
+    // }
 
-    wing: {
-      objClass: "accessory"
-      modelPath: "/assets/objects/wing/wing.glb"
-      thumbnail: "/assets/objects/wing/wing_thumb.png"
-      displayName: "Wing"
-      size: 2
-      sizeRank: 2
-      influence: { radius: 0.12 }
-      sockets: [
-        { id: "socket_c_0", role: "child", positionHint: "inside", rotationOffset: [0, 0, 0] }
-      ]
-      allowedSockets: {
-        hoon_dog: ["socket_p_7"]  // saddle/back only
-      }
-    }
+    // wing: {
+    //   objClass: "accessory"
+    //   modelPath: "/assets/objects/wing/wing.glb"
+    //   thumbnail: "/assets/objects/wing/wing_thumb.png"
+    //   displayName: "Wing"
+    //   size: 2
+    //   sizeRank: 2
+    //   influence: { radius: 0.12 }
+    //   sockets: [
+    //     { id: "socket_c_0", role: "child", positionHint: "inside", rotationOffset: [0, 0, 0] }
+    //   ]
+    //   allowedSockets: {
+    //     hoon_dog: ["socket_p_7"]  // saddle/back only
+    //   }
+    // }
 
   }
 }

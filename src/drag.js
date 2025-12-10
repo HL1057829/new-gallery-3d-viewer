@@ -300,7 +300,12 @@ export function initDrag(options) {
     const childLocal = child.node.matrix.clone();
     const childLocalInv = childLocal.clone().invert();
     const rotateY180 = new Matrix4().makeRotationY(Math.PI);
-    const targetMatrix = parentMatrix.clone().multiply(rotateY180).multiply(childLocalInv);
+    const scaleMatrix = new Matrix4().makeScale(
+      active.model.scale.x,
+      active.model.scale.y,
+      active.model.scale.z
+    );
+    const targetMatrix = parentMatrix.clone().multiply(rotateY180).multiply(childLocalInv).multiply(scaleMatrix);
 
     const pos = new Vector3();
     const quat = new Quaternion();
@@ -308,8 +313,6 @@ export function initDrag(options) {
     targetMatrix.decompose(pos, quat, scl);
 
     const model = active.model;
-    const currentScale = model.scale.clone();
-
     const hostRoot = getHostRoot(parent.node);
     const localTarget = targetMatrix.clone();
     if (hostRoot) {
@@ -327,7 +330,7 @@ export function initDrag(options) {
 
     model.position.copy(localPos);
     model.quaternion.copy(localQuat);
-    model.scale.copy(currentScale);
+    model.scale.copy(localScl);
     model.updateMatrixWorld(true);
 
     attachedSources = [...attachedSources, { name: active.objectId, model }];
