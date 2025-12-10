@@ -1,5 +1,5 @@
 /** @file First-pass drag prototype for accessories from the tray. */
-import { Box3, MathUtils, Plane, Raycaster, Sphere, Vector2, Vector3 } from 'three';
+import { Box3, MathUtils, Plane, Quaternion, Raycaster, Sphere, Vector2, Vector3 } from 'three';
 import { getModelMeta, getModelRegistry } from './loaders.js';
 
 /**
@@ -75,7 +75,8 @@ export function initDrag(options) {
       startScale: computeStartScale(registryEntry.radius, planeDistance(camera, plane), renderer, camera, target),
       startTime: null,
       returning: false,
-      lastCandidatesKey: ''
+      lastCandidatesKey: 'none',
+      highlighted: null
     };
 
     if (active.startScale != null) {
@@ -191,32 +192,56 @@ export function initDrag(options) {
 
   function logSnapCandidates() {
     if (!active || !baseModel) return;
+    active.model.updateMatrixWorld(true);
+    baseModel.updateMatrixWorld(true);
     const childSockets = collectSocketsWorld(active.model, 'child');
-    const parentSockets = collectSocketsWorld(baseModel, 'parent');
-    const threshold = baseRadius > 0 ? baseRadius * 0.25 : 0.3;
+    const parentSockets = collectSocketsWorld(baseModel, 'parent', true);
+    const threshold = baseRadius > 0 ? baseRadius * 0.75 : 0.9;
 
-    const candidates = [];
+    let best = null;
     childSockets.forEach((child) => {
-      let best = null;
       parentSockets.forEach((parent) => {
-        const dist = child.position.distanceTo(parent.position);
+        const dist = planarDistanceWithZAllowance(camera, child.position, parent.position);
         if (dist <= threshold) {
           if (!best || dist < best.distance) {
-            best = { parentId: parent.socketId, childId: child.socketId, distance: dist };
+            best = { parent, child, distance: dist };
           }
         }
       });
-      if (best) candidates.push(best);
     });
 
-    const key = JSON.stringify(candidates);
+    highlightParent(best?.parent);
+
+    const key =
+      best != null ? `${best.parent.socketId}:${best.child.socketId}:${best.distance.toFixed(3)}` : 'none';
     if (key !== active.lastCandidatesKey) {
       active.lastCandidatesKey = key;
-      if (candidates.length > 0) {
-        console.info('Snap candidates', { accessory: active.objectId, base: baseName, candidates });
+      if (best) {
+        console.info('Snap candidate', {
+          accessory: active.objectId,
+          base: baseName,
+          candidate: {
+            parentId: best.parent.socketId,
+            childId: best.child.socketId,
+            distance: best.distance
+          }
+        });
       } else {
-        console.info('Snap candidates', { accessory: active.objectId, base: baseName, candidates: [] });
+        console.info('Snap candidate', { accessory: active.objectId, base: baseName, candidate: null });
       }
+    }
+  }
+
+  function highlightParent(parent) {
+    const previous = active.highlighted;
+    if (previous && previous.helper && previous.role) {
+      previous.helper.material.color.set(previous.role === 'parent' ? 0xff3333 : 0x33ff66);
+    }
+    active.highlighted = null;
+
+    if (parent && parent.helper) {
+      parent.helper.material.color.set(0xffd42a);
+      active.highlighted = { helper: parent.helper, role: parent.role };
     }
   }
 }
@@ -272,7 +297,7 @@ function animateScale(model, finalScale, fromFactor, toFactor, duration) {
   requestAnimationFrame(step);
 }
 
-function collectSocketsWorld(root, role) {
+function collectSocketsWorld(root, role, includeHelpers = false) {
   const sockets = [];
   root.updateMatrixWorld(true);
   root.traverse((node) => {
@@ -283,8 +308,28 @@ function collectSocketsWorld(root, role) {
     if (role === 'parent' && !isParent) return;
     if (role === 'child' && !isChild) return;
     const pos = new Vector3();
+    const normal = new Vector3(0, 1, 0);
     node.getWorldPosition(pos);
-    sockets.push({ socketId: node.name, position: pos });
+    const q = new Quaternion();
+    node.getWorldQuaternion(q);
+    normal.applyQuaternion(q);
+    normal.normalize();
+    const helper =
+      includeHelpers && node.children
+        ? node.children.find((c) => typeof c.name === 'string' && c.name.startsWith('helper_'))
+        : null;
+    sockets.push({ socketId: node.name, position: pos, normal, role, helper });
   });
   return sockets;
+}
+
+function planarDistanceWithZAllowance(camera, p1, p2, zAllowanceFactor = 0.2) {
+  const a = p1.clone().applyMatrix4(camera.matrixWorldInverse);
+  const b = p2.clone().applyMatrix4(camera.matrixWorldInverse);
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const planar = Math.hypot(dx, dy);
+  // If either point is closer to the camera (more negative z), allow a bit more reach.
+  const allowance = Math.max(0, -Math.min(a.z, b.z)) * zAllowanceFactor;
+  return Math.max(0, planar - allowance);
 }
