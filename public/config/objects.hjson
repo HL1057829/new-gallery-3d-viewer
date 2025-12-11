@@ -70,7 +70,7 @@
       thumbnail: "/assets/objects/hoon_dog/hoon_dog_thumb.png"
       displayName: "Hoon Dog"
       size: 11
-      sizeRank: 3
+      sizeRank: 6
       influence: { radius: 0.1 }
       sockets: [
         { id: "socket_p_0", role: "parent", positionHint: "top of head",    rotationOffset: [0, 0, 0] }
@@ -94,7 +94,7 @@
       thumbnail: "/assets/objects/full_face/full_face_thumb.png"
       displayName: "Full Face"
       size: 3.5
-      sizeRank: 2
+      sizeRank: 5
       influence: { radius: 0.15 }
       sockets: [
         { id: "socket_c_0", role: "child",  positionHint: "inside",      rotationOffset: [0, 0, 0] }
@@ -103,6 +103,7 @@
         { id: "socket_p_2", role: "parent", positionHint: "left cheek",  rotationOffset: [0, 0, 0] }
         { id: "socket_p_3", role: "parent", positionHint: "right cheek", rotationOffset: [0, 0, 0] }
         { id: "socket_p_4", role: "parent", positionHint: "right temple",rotationOffset: [0, 0, 0] }
+        { id: "socket_p_5", role: "parent", positionHint: "nose",rotationOffset: [0, 0, 0] }
       ]
       allowedSockets: {
         hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5"]
@@ -115,7 +116,7 @@
       thumbnail: "/assets/objects/half_face/half_face_thumb.png"
       displayName: "Half Face"
       size: 2.5
-      sizeRank: 2
+      sizeRank: 4
       influence: { radius: 0.15 }
       sockets: [
         { id: "socket_c_0", role: "child",  positionHint: "inside",      rotationOffset: [0, 0, 0] }
@@ -127,6 +128,7 @@
       ]
       allowedSockets: {
         hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5", "socket_p_10"]
+        full_face: ["socket_p_5"]
       }
     }
 
@@ -136,7 +138,7 @@
       thumbnail: "/assets/objects/piggy_face1/piggy_face1_thumb.png"
       displayName: "Piggy Face"
       size: 2.5
-      sizeRank: 2
+      sizeRank: 4
       influence: { radius: 0.12 }
       sockets: [
         { id: "socket_c_0", role: "child",  positionHint: "inside",      rotationOffset: [0, 0, 0] }
@@ -146,6 +148,7 @@
       ]
       allowedSockets: {
         hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5", "socket_p_10"]
+        full_face: ["socket_p_0", "socket_p_5"]
       }
     }
 
@@ -155,7 +158,7 @@
     //   thumbnail: "/assets/objects/piggy_face2/piggy_face2_thumb.png"
     //   displayName: "Piggy Face"
     //   size: 1.5
-    //   sizeRank: 2
+    //   sizeRank: 4
     //   influence: { radius: 0.12 }
     //   sockets: [
     //     { id: "socket_c_0", role: "child",  positionHint: "inside",      rotationOffset: [0, 0, 0] }
@@ -174,7 +177,7 @@
       thumbnail: "/assets/objects/rabbit_ear/rabbit_ear_thumb.png"
       displayName: "Rabbit Ear"
       size: 3
-      sizeRank: 2
+      sizeRank: 3
       influence: { radius: 0.12 }
       sockets: [
         { id: "socket_c_0", role: "child",  positionHint: "inside",     rotationOffset: [0, 0, 0] }
@@ -184,7 +187,7 @@
       allowedSockets: {
         hoon_dog:  ["socket_p_0", "socket_p_1", "socket_p_3", "socket_p_5", "socket_p_7", "socket_p_10"]
         full_face: ["socket_p_0"]
-        piggy_face1:   ["socket_p_0"]
+        piggy_face1:   ["socket_p_0", "socket_p_5"]
       }
     }
 
@@ -194,7 +197,7 @@
       thumbnail: "/assets/objects/rabbit_nose/rabbit_nose_thumb.png"
       displayName: "Rabbit Nose"
       size: 1.5
-      sizeRank: 1
+      sizeRank: 2
       influence: { radius: 0.08 }
       sockets: [
         { id: "socket_c_0", role: "child",  positionHint: "inside",   rotationOffset: [0, 0, 0] }
@@ -209,7 +212,7 @@
     //   thumbnail: "/assets/objects/bear_ear/bear_ear_thumb.png"
     //   displayName: "Bear Ear"
     //   size: 1
-    //   sizeRank: 2
+    //   sizeRank: 3
     //   influence: { radius: 0.12 }
     //   sockets: [
     //     { id: "socket_c_0", role: "child",  positionHint: "inside",     rotationOffset: [0, 0, 0] }
@@ -229,7 +232,7 @@
       thumbnail: "/assets/objects/bear_nose/bear_nose_thumb.png"
       displayName: "Bear Nose"
       size: 1.5
-      sizeRank: 1
+      sizeRank: 2
       influence: { radius: 0.08 }
       sockets: [
         { id: "socket_c_0", role: "child",  positionHint: "inside",   rotationOffset: [0, 0, 0] }
@@ -243,7 +246,7 @@
       modelPath: "/assets/objects/plunger1/plunger1.glb"
       thumbnail: "/assets/objects/plunger1/plunger1_thumb.png"
       displayName: "Plunger"
-      size: 1.25
+      size: 1
       sizeRank: 1
       influence: { radius: 0.05 }
       sockets: [

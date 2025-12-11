@@ -17,6 +17,7 @@ import { initDrag } from './drag.js';
   }
 
   const baseSize = Number.isFinite(base.size) ? base.size : 1;
+  const baseSizeRank = Number.isFinite(base.sizeRank) ? base.sizeRank : Infinity;
   const baseMeta = getModelMeta(base.name);
   const baseRadius = Number.isFinite(baseMeta?.radius) && baseMeta.radius > 0 ? baseMeta.radius : 1;
 
@@ -49,6 +50,7 @@ import { initDrag } from './drag.js';
     accessories: loadedAccessories,
     baseSize,
     baseRadius,
+    baseSizeRank,
     baseModel: model,
     baseName: base.name,
     visibilityIntervalMs: base?.interaction?.socketVisibilityIntervalMs

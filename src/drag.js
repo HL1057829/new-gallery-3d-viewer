@@ -12,6 +12,7 @@ import { getModelMeta, getModelRegistry } from './loaders.js';
  *   accessories: { name: string, size?: number }[],
  *   baseSize: number,
  *   baseRadius: number,
+ *   baseSizeRank?: number,
  *   baseModel?: import('three').Object3D
  * }} options
  */
@@ -24,6 +25,7 @@ export function initDrag(options) {
     accessories = [],
     baseSize = 1,
     baseRadius = 1,
+    baseSizeRank = Infinity,
     baseModel,
     baseName,
     attachedParents = []
@@ -65,7 +67,7 @@ export function initDrag(options) {
     clone.visible = true;
     scene.add(clone);
 
-    const parentSources = [{ name: baseName, model: baseModel }, ...attachedSources];
+    const parentSources = [{ name: baseName, model: baseModel, sizeRank: baseSizeRank }, ...attachedSources];
 
     const allowedSockets = accessory?.allowedSockets;
 
@@ -85,7 +87,8 @@ export function initDrag(options) {
       highlighted: null,
       parentSources,
       allowedSockets,
-      bestCandidate: null
+      bestCandidate: null,
+      sizeRank: Number.isFinite(accessory?.sizeRank) ? accessory.sizeRank : Infinity
     };
 
     if (active.startScale != null) {
@@ -239,12 +242,12 @@ export function initDrag(options) {
     const child = childSockets[0];
     let best = null;
     if (child) {
-      const visibleParents = filterVisibleParents(
-        filterAllowedParents(parentSockets, active.allowedSockets),
-        child.position,
-        threshold,
-        occluderModels
-      );
+    const visibleParents = filterVisibleParents(
+      filterAllowedParents(parentSockets, active.allowedSockets, active.sizeRank),
+      child.position,
+      threshold,
+      occluderModels
+    );
       visibleParents.forEach((parent) => {
         const pPos = parent.helper ? parent.helper.getWorldPosition(new Vector3()) : parent.position;
         const distance = planarDistance(camera, child.position, pPos);
@@ -337,7 +340,10 @@ export function initDrag(options) {
     model.scale.copy(storedScale);
     model.updateMatrixWorld(true);
 
-    attachedSources = [...attachedSources, { name: active.objectId, model }];
+    attachedSources = [
+      ...attachedSources,
+      { name: active.objectId, model, sizeRank: Number.isFinite(active.sizeRank) ? active.sizeRank : Infinity }
+    ];
     console.info('Attached accessory', {
       accessory: active.objectId,
       parentSocket: parent.socketId,
@@ -454,29 +460,33 @@ function animateScale(model, finalScale, fromFactor, toFactor, duration) {
   requestAnimationFrame(step);
 }
 
-function collectSocketsWorld(root, role, includeHelpers = false) {
+function collectSocketsWorld(root, role, includeHelpers = false, skip = new Set()) {
   const sockets = [];
   root.updateMatrixWorld(true);
-  root.traverse((node) => {
-    if (!node?.name || typeof node.name !== 'string') return;
-    if (!node.name.startsWith('socket_')) return;
-    const isParent = node.name.includes('socket_p');
-    const isChild = node.name.includes('socket_c');
-    if (role === 'parent' && !isParent) return;
-    if (role === 'child' && !isChild) return;
-    const pos = new Vector3();
-    const normal = new Vector3(0, 1, 0);
-    node.getWorldPosition(pos);
-    const q = new Quaternion();
-    node.getWorldQuaternion(q);
-    normal.applyQuaternion(q);
-    normal.normalize();
-    const helper =
-      includeHelpers && node.children
-        ? node.children.find((c) => typeof c.name === 'string' && c.name.startsWith('helper_'))
-        : null;
-    sockets.push({ socketId: node.name, position: pos, normal, role, helper, node });
-  });
+  const visit = (node) => {
+    if (node !== root && skip.has(node)) return;
+    if (node?.name && typeof node.name === 'string' && node.name.startsWith('socket_')) {
+      const isParent = node.name.includes('socket_p');
+      const isChild = node.name.includes('socket_c');
+      if ((role === 'parent' && isParent) || (role === 'child' && isChild)) {
+        const pos = new Vector3();
+        const normal = new Vector3(0, 1, 0);
+        node.getWorldPosition(pos);
+        const q = new Quaternion();
+        node.getWorldQuaternion(q);
+        normal.applyQuaternion(q);
+        normal.normalize();
+        const helper =
+          includeHelpers && node.children
+            ? node.children.find((c) => typeof c.name === 'string' && c.name.startsWith('helper_'))
+            : null;
+        sockets.push({ socketId: node.name, position: pos, normal, role, helper, node });
+      }
+    }
+    if (!node?.children) return;
+    node.children.forEach(visit);
+  };
+  visit(root);
   return sockets;
 }
 
@@ -492,20 +502,33 @@ function normalizeParentSources(sources) {
   if (!Array.isArray(sources)) return [];
   return sources.map((src, index) => {
     if (!src) return null;
-    if (src.model) return { name: src.name || `attached_${index}`, model: src.model };
-    return { name: src.name || `attached_${index}`, model: src };
+    if (src.model)
+      return {
+        name: src.name || `attached_${index}`,
+        model: src.model,
+        sizeRank: Number.isFinite(src.sizeRank) ? src.sizeRank : Infinity
+      };
+    return {
+        name: src.name || `attached_${index}`,
+        model: src,
+        sizeRank: Number.isFinite(src.sizeRank) ? src.sizeRank : Infinity
+      };
   }).filter(Boolean);
 }
 
 function collectParentSockets(sources) {
   if (!Array.isArray(sources)) return [];
   const parents = [];
+  const skipSet = new Set(sources.map((s) => s?.model).filter(Boolean));
   sources.forEach((src) => {
     if (!src) return;
+    const skipOthers = new Set(skipSet);
+    skipOthers.delete(src.model);
     parents.push(
-      ...collectSocketsWorld(src.model, 'parent', true).map((p) => ({
+      ...collectSocketsWorld(src.model, 'parent', true, skipOthers).map((p) => ({
         ...p,
-        hostName: src.name
+        hostName: src.name,
+        hostSizeRank: Number.isFinite(src.sizeRank) ? src.sizeRank : Infinity
       }))
     );
   });
@@ -517,8 +540,18 @@ function projectToScreen(camera, pos) {
   return new Vector2((ndc.x + 1) / 2, (1 - ndc.y) / 2);
 }
 
-function filterAllowedParents(parents, allowedSockets) {
+function filterAllowedParents(parents, allowedSockets, childSizeRank = Infinity) {
   if (!parents || parents.length === 0) return [];
+
+  // Enforce sizeRank: host must be larger than the attaching accessory.
+  const rankedParents = parents.filter((p) => {
+    if (!Number.isFinite(childSizeRank)) return true;
+    if (!Number.isFinite(p.hostSizeRank)) return true;
+    return p.hostSizeRank > childSizeRank;
+  });
+
+  parents = rankedParents;
+  if (parents.length === 0) return [];
 
   // No restrictions
   if (!allowedSockets) return parents;
@@ -532,7 +565,12 @@ function filterAllowedParents(parents, allowedSockets) {
 
   return parents.filter((p) => {
     const allowedList = allowedSockets[p.hostName];
-    if (allowedList === undefined) return true; // no host-specific restriction
+    if (allowedList === undefined) {
+      const wildcard = allowedSockets['*'];
+      if (wildcard === undefined) return false; // host not listed; disallow
+      if (Array.isArray(wildcard) && wildcard.length === 0) return true;
+      return Array.isArray(wildcard) && wildcard.includes(p.socketId);
+    }
     if (Array.isArray(allowedList) && allowedList.length === 0) return true;
     return Array.isArray(allowedList) && allowedList.includes(p.socketId);
   });

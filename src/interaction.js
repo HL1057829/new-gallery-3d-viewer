@@ -94,7 +94,6 @@ export function createInteractionController(
       pinchStartDistance = distance(points[0], points[1]);
     }
 
-    debugLog('pointerdown', { x: event.clientX, y: event.clientY, pointers: points.length });
   }
 
   function onPointerMove(event) {
@@ -165,7 +164,6 @@ export function createInteractionController(
       velocityX = 0;
       velocityY = 0;
     }
-    debugLog('pointerup');
   }
 
   function onWheel(event) {
@@ -176,7 +174,6 @@ export function createInteractionController(
     const zoomDelta = event.deltaY * effectiveSpeed;
     zoomDistance = clamp(zoomDistance + zoomDelta, minZoom, maxZoom);
     camera.position.set(camera.position.x, camera.position.y, zoomDistance);
-    debugLog('wheel', { deltaY: event.deltaY, zoomDistance, isPinchLike, effectiveSpeed });
   }
 
   function distance(p1, p2) {
