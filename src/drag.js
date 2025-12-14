@@ -112,7 +112,7 @@ export function initDrag(options) {
     updatePointerFromEvent(event);
     // Refresh candidate at release in case it changed on the final frame
     logSnapCandidates();
-    const candidate = active.bestCandidate || active.lastGoodCandidate;
+    const candidate = active.bestCandidate;
 
     if (candidate) {
       try {
