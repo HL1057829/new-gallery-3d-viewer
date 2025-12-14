@@ -2,7 +2,7 @@
 import {
   Box3,
   Color,
-  ConeGeometry,
+  TorusGeometry,
   Mesh,
   MeshBasicMaterial,
   Quaternion,
@@ -195,14 +195,18 @@ function registerModel(id, modelPath, model) {
 }
 
 function attachSocketHelper(node, role, scene, objectId) {
-  const color = role === 'parent' ? new Color(0xff3333) : new Color(0x33ff66);
+  const color = new Color(0xff0000);
   const scale = node.parent ? node.parent.worldToLocal(new Vector3(1, 1, 1)).length() : 1;
   const markerSize = 0.02 * scale;
-  const geometry = new ConeGeometry(markerSize, markerSize * 2, 4, 1, false);
-  geometry.rotateY(Math.PI / 2); // align one base corner with +Z
-  const material = new MeshBasicMaterial({ color });
+  const radius = markerSize * 3; // 25% smaller diameter than previous
+  const tube = markerSize * 1.5; // 200% thicker than previous
+  const geometry = new TorusGeometry(radius, tube, 8, 24);
+  const material = new MeshBasicMaterial({ color, transparent: true, opacity: 0.5 });
   const helper = new Mesh(geometry, material);
   helper.name = `helper_${objectId}_${node.name}`;
-  helper.scale.set(1, 1, 1.5); // slightly stretch along +Z to emphasize socket orientation
+  // Keep prior orientation that visually matched sockets, and sink it slightly so it sits embedded.
+  helper.rotation.set(0, 0, Math.PI / 2);
+  helper.position.set(0, 0, 0);
+  helper.visible = false;
   node.add(helper);
 }

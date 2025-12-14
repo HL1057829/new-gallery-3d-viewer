@@ -280,13 +280,16 @@ export function initDrag(options) {
 
   function highlightParent(parent) {
     const previous = active.highlighted;
-    if (previous && previous.helper && previous.role) {
-      previous.helper.material.color.set(previous.role === 'parent' ? 0xff3333 : 0x33ff66);
+    if (previous && previous.helper) {
+      previous.helper.visible = false;
     }
     active.highlighted = null;
 
     if (parent && parent.helper) {
-      parent.helper.material.color.set(0xffd42a);
+      parent.helper.material.color.set(0xff0000);
+      parent.helper.material.opacity = 0.5;
+      parent.helper.material.transparent = true;
+      parent.helper.visible = true;
       active.highlighted = { helper: parent.helper, role: parent.role };
     }
   }
@@ -340,6 +343,9 @@ export function initDrag(options) {
     model.scale.copy(storedScale);
     model.updateMatrixWorld(true);
 
+    if (active.highlighted?.helper) {
+      active.highlighted.helper.visible = false;
+    }
     attachedSources = [
       ...attachedSources,
       { name: active.objectId, model, sizeRank: Number.isFinite(active.sizeRank) ? active.sizeRank : Infinity }
