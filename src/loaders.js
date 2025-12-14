@@ -2,7 +2,7 @@
 import {
   Box3,
   Color,
-  TorusGeometry,
+  CylinderGeometry,
   Mesh,
   MeshBasicMaterial,
   Quaternion,
@@ -198,14 +198,16 @@ function attachSocketHelper(node, role, scene, objectId) {
   const color = new Color(0xff0000);
   const scale = node.parent ? node.parent.worldToLocal(new Vector3(1, 1, 1)).length() : 1;
   const markerSize = 0.02 * scale;
-  const radius = markerSize * 3; // 25% smaller diameter than previous
-  const tube = markerSize * 1.5; // 200% thicker than previous
-  const geometry = new TorusGeometry(radius, tube, 8, 24);
+  const radius = markerSize * 3; // matches torus major radius
+  const tube = markerSize * 1.5; // matches torus thickness
+  const outerRadius = radius + tube; // approximate outer radius of prior torus
+  const height = tube * 2; // squat cylinder height
+  const geometry = new CylinderGeometry(outerRadius, outerRadius, height, 24, 1, false);
   const material = new MeshBasicMaterial({ color, transparent: true, opacity: 0.5 });
   const helper = new Mesh(geometry, material);
   helper.name = `helper_${objectId}_${node.name}`;
-  // Keep prior orientation that visually matched sockets, and sink it slightly so it sits embedded.
-  helper.rotation.set(0, 0, Math.PI / 2);
+  // Rotate 90deg about X so the cylinder axis/center aligns with socket +Y and faces outward.
+  helper.rotation.set(Math.PI / 2, 0, 0);
   helper.position.set(0, 0, 0);
   helper.visible = false;
   node.add(helper);
