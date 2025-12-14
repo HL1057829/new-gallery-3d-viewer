@@ -198,8 +198,9 @@ function attachSocketHelper(node, role, scene, objectId) {
   const color = new Color(0xff0000);
   const scale = node.parent ? node.parent.worldToLocal(new Vector3(1, 1, 1)).length() : 1;
   const markerSize = 0.02 * scale;
-  const radius = markerSize * 3; // matches torus major radius
-  const tube = markerSize * 1.5; // matches torus thickness
+  // Overall marker diameter scaled to 75% of the original (reduce both radius and thickness).
+  const radius = markerSize * 2.25; // 0.75 * 3
+  const tube = markerSize * 1.125; // 0.75 * 1.5
   const outerRadius = radius + tube; // approximate outer radius of prior torus
   const height = tube * 2; // squat cylinder height
   const geometry = new CylinderGeometry(outerRadius, outerRadius, height, 24, 1, false);
