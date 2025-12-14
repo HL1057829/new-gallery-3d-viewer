@@ -69,7 +69,7 @@
       modelPath: "/assets/objects/hoon_dog/hoon_dog.glb"
       thumbnail: "/assets/objects/hoon_dog/hoon_dog_thumb.png"
       displayName: "Hoon Dog"
-      size: 11
+      size: 10
       sizeRank: 6
       influence: { radius: 0.1 }
       sockets: [
@@ -93,7 +93,7 @@
       modelPath: "/assets/objects/full_face/full_face.glb"
       thumbnail: "/assets/objects/full_face/full_face_thumb.png"
       displayName: "Full Face"
-      size: 3.5
+      size: 4
       sizeRank: 5
       influence: { radius: 0.15 }
       sockets: [
@@ -115,7 +115,7 @@
       modelPath: "/assets/objects/half_face/half_face.glb"
       thumbnail: "/assets/objects/half_face/half_face_thumb.png"
       displayName: "Half Face"
-      size: 2.5
+      size: 2.64
       sizeRank: 4
       influence: { radius: 0.15 }
       sockets: [
@@ -137,7 +137,7 @@
       modelPath: "/assets/objects/piggy_face1/piggy_face1.glb"
       thumbnail: "/assets/objects/piggy_face1/piggy_face1_thumb.png"
       displayName: "Piggy Face"
-      size: 2.5
+      size: 2.66
       sizeRank: 4
       influence: { radius: 0.12 }
       sockets: [
@@ -196,7 +196,7 @@
       modelPath: "/assets/objects/rabbit_nose/rabbit_nose.glb"
       thumbnail: "/assets/objects/rabbit_nose/rabbit_nose_thumb.png"
       displayName: "Rabbit Nose"
-      size: 1.5
+      size: 1.766
       sizeRank: 2
       influence: { radius: 0.08 }
       sockets: [
@@ -231,7 +231,7 @@
       modelPath: "/assets/objects/bear_nose/bear_nose.glb"
       thumbnail: "/assets/objects/bear_nose/bear_nose_thumb.png"
       displayName: "Bear Nose"
-      size: 1.5
+      size: 1.766
       sizeRank: 2
       influence: { radius: 0.08 }
       sockets: [
@@ -246,7 +246,7 @@
       modelPath: "/assets/objects/plunger1/plunger1.glb"
       thumbnail: "/assets/objects/plunger1/plunger1_thumb.png"
       displayName: "Plunger"
-      size: 1
+      size: 1.4
       sizeRank: 1
       influence: { radius: 0.05 }
       sockets: [
