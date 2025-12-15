@@ -12,7 +12,6 @@ export function initTray({ accessories = [] } = {}) {
   if (accessories.length === 0) return;
 
   const tooltip = ensureTooltip();
-  const tooltipTimers = new Map();
 
   accessories.forEach((item) => {
     const img = document.createElement('img');
@@ -37,18 +36,15 @@ export function initTray({ accessories = [] } = {}) {
       hideTooltip(img);
     });
     img.addEventListener('pointerdown', (event) => {
-      // Touch or pen tap shows briefly
       if (event.pointerType === 'touch' || event.pointerType === 'pen') {
         showTooltip(img);
-        if (tooltipTimers.has(img)) {
-          clearTimeout(tooltipTimers.get(img));
-        }
-        const timer = setTimeout(() => {
-          hideTooltip(img);
-          tooltipTimers.delete(img);
-        }, 1200);
-        tooltipTimers.set(img, timer);
       }
+    });
+    img.addEventListener('pointerup', () => {
+      hideTooltip();
+    });
+    img.addEventListener('pointercancel', () => {
+      hideTooltip();
     });
     tray.appendChild(img);
   });

@@ -65,12 +65,14 @@ body {
   pointer-events: none;
   opacity: 0;
   transform: translate(-50%, -8px);
-  transition: opacity 120ms ease 0s;
+  transition: opacity 250ms ease;
+  transition-delay: 100ms;
+  will-change: opacity;
 }
 
 .tray-tooltip.visible {
   opacity: 1;
-  transition-delay: 0.5s;
+  transition-delay: 1000ms;
 }
 
 canvas {
