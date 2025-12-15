@@ -13,6 +13,16 @@ export function initTray({ accessories = [] } = {}) {
 
   const tooltip = ensureTooltip();
 
+  const refreshBtn = document.createElement('button');
+  refreshBtn.type = 'button';
+  refreshBtn.className = 'refresh';
+  refreshBtn.textContent = '⟳';
+  refreshBtn.setAttribute('aria-label', 'Refresh');
+  refreshBtn.addEventListener('click', () => {
+    window.location.reload();
+  });
+  tray.appendChild(refreshBtn);
+
   accessories.forEach((item) => {
     const img = document.createElement('img');
     img.className = 'thumb';

@@ -52,6 +52,22 @@ body {
   overflow: visible;
 }
 
+.refresh {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #bbbbbb;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 64px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
 .tray-tooltip {
   position: fixed;
   z-index: 4;
