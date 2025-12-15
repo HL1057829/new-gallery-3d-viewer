@@ -283,5 +283,12 @@
     //   }
     // }
 
+    marker: {
+      objClass: "marker"
+      modelPath: "/assets/objects/marker/marker.glb"
+      displayName: "Marker"
+      size: 0.25
+    }
+
   }
 }
