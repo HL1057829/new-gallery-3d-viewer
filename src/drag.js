@@ -1,6 +1,6 @@
 /** @file First-pass drag prototype for accessories from the tray. */
 import { Box3, MathUtils, Matrix4, Plane, Quaternion, Raycaster, Sphere, Vector2, Vector3 } from 'three';
-import { getModelMeta, getModelRegistry } from './loaders.js';
+import { getModelMeta, getModelRegistry, getSharedMarker } from './loaders.js';
 
 /**
  * Initialize drag-from-tray behavior.
@@ -14,6 +14,7 @@ import { getModelMeta, getModelRegistry } from './loaders.js';
  *   baseRadius: number,
  *   baseSizeRank?: number,
  *   baseModel?: import('three').Object3D
+ *   dragOpacity?: number
  * }} options
  */
 export function initDrag(options) {
@@ -28,7 +29,8 @@ export function initDrag(options) {
     baseSizeRank = Infinity,
     baseModel,
     baseName,
-    attachedParents = []
+    attachedParents = [],
+    dragOpacity = 0.5
   } = options || {};
   const tray = document.getElementById('tray');
   if (!tray || !scene || !camera || !renderer || !interaction) return;
@@ -39,6 +41,7 @@ export function initDrag(options) {
   let active = null;
   const baseAnchor = computeBaseAnchor(baseModel);
   let attachedSources = normalizeParentSources(attachedParents);
+  let sharedMarker = null;
 
   tray.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
@@ -96,6 +99,8 @@ export function initDrag(options) {
       animateScale(clone, active.finalScale, active.startScale, 1, 200);
     }
 
+    setModelOpacity(clone, dragOpacity);
+
     updatePointerFromEvent(event);
     updateModelPosition();
   }
@@ -124,6 +129,7 @@ export function initDrag(options) {
         animateReturn(
           targetPosition,
           () => {
+            restoreModelOpacity(active.model);
             scene.remove(active.model);
             clearActiveDrag();
           },
@@ -138,6 +144,7 @@ export function initDrag(options) {
       animateReturn(
         targetPosition,
         () => {
+          restoreModelOpacity(active.model);
           scene.remove(active.model);
           clearActiveDrag();
         },
@@ -280,19 +287,48 @@ export function initDrag(options) {
 
   function highlightParent(parent) {
     const previous = active.highlighted;
-    if (previous && previous.helper) {
-      previous.helper.visible = false;
+    if (previous) {
+      if (previous.helper) {
+        previous.helper.visible = false;
+      }
+      if (sharedMarker && sharedMarker.parent === previous.helper) {
+        sharedMarker.visible = false;
+      }
     }
     active.highlighted = null;
 
-    if (parent && parent.helper) {
-      parent.helper.material.color.set(0xff0000);
-      parent.helper.material.opacity = 0.5;
-      parent.helper.material.transparent = true;
-      parent.helper.visible = true;
-      active.highlighted = { helper: parent.helper, role: parent.role };
+    if (!parent || !parent.helper) return;
+
+    if (!sharedMarker) {
+      sharedMarker = getSharedMarker(scene);
     }
+    if (!sharedMarker) return;
+
+    const markerMeta = getModelMeta('marker');
+    const desiredRadius =
+      (Number.isFinite(markerMeta?.targetRadius) && markerMeta.targetRadius > 0
+        ? markerMeta.targetRadius
+        : Number.isFinite(parent.helper.userData?.targetRadius) && parent.helper.userData.targetRadius > 0
+          ? parent.helper.userData.targetRadius
+          : Number.isFinite(parent.helper.userData?.outerRadius) && parent.helper.userData.outerRadius > 0
+            ? parent.helper.userData.outerRadius
+            : sharedMarker.userData?.baseRadius) || 1;
+    const baseRadius =
+      Number.isFinite(sharedMarker.userData?.baseRadius) && sharedMarker.userData.baseRadius > 0
+        ? sharedMarker.userData.baseRadius
+        : 1;
+    const scaleFactor = desiredRadius > 0 ? desiredRadius / baseRadius : 1;
+
+    parent.helper.visible = true;
+    sharedMarker.visible = true;
+    sharedMarker.position.set(0, 0, 0);
+    sharedMarker.rotation.set(0, 0, Math.PI);
+    sharedMarker.scale.setScalar(scaleFactor);
+    parent.helper.add(sharedMarker);
+    active.highlighted = { helper: parent.helper, role: parent.role };
   }
+
+  function applyHelperHighlight(helper) {}
 
   function snapToParent(candidate) {
     const { parent, child } = candidate;
@@ -337,11 +373,12 @@ export function initDrag(options) {
       model.position.copy(hostRoot.worldToLocal(modelPosWorld.clone()));
     } else {
       model.quaternion.copy(modelQuatWorld);
-      model.position.copy(modelPosWorld);
-    }
+    model.position.copy(modelPosWorld);
+  }
 
-    model.scale.copy(storedScale);
-    model.updateMatrixWorld(true);
+  model.scale.copy(storedScale);
+  model.updateMatrixWorld(true);
+  restoreModelOpacity(model);
 
     if (active.highlighted?.helper) {
       active.highlighted.helper.visible = false;
@@ -371,6 +408,9 @@ export function initDrag(options) {
   }
 
   function clearActiveDrag() {
+    if (sharedMarker) {
+      sharedMarker.visible = false;
+    }
     active = null;
     interaction.enable();
   }
@@ -382,13 +422,22 @@ export function initDrag(options) {
     if (dist <= 0) return false;
     dir.normalize();
     raycaster.set(cam.position, dir);
-    const hits = Array.isArray(occluder)
-      ? occluder.flatMap((o) => (o ? raycaster.intersectObject(o, true) : []))
+    const socketRoot = getHostRoot(socket.node);
+    const occluderList = Array.isArray(occluder)
+      ? occluder.filter(Boolean)
       : occluder
-        ? raycaster.intersectObject(occluder, true)
+        ? [occluder]
         : [];
+    const filteredOccluders = socketRoot
+      ? occluderList.filter((o) => getHostRoot(o) !== socketRoot)
+      : occluderList;
+    const hits = filteredOccluders.flatMap((o) => raycaster.intersectObject(o, true));
     if (!hits || hits.length === 0) return true;
-    const hit = hits.find((h) => !h.object.name?.startsWith?.('helper_'));
+    const hit = hits.find((h) => {
+      if (h.object.name?.startsWith?.('helper_')) return false;
+      const hitRoot = getHostRoot(h.object);
+      return !socketRoot || hitRoot !== socketRoot;
+    });
     if (!hit) return true;
     return hit.distance >= dist - 1e-3;
   }
@@ -502,6 +551,42 @@ function planarDistance(camera, p1, p2) {
   a.z = 0;
   b.z = 0;
   return a.distanceTo(b);
+}
+
+function setModelOpacity(root, opacity = 0.75) {
+  if (!root) return;
+  root.traverse((node) => {
+    const mat = node.material;
+    if (!mat) return;
+    const materials = Array.isArray(mat) ? mat : [mat];
+    materials.forEach((m) => {
+      if (m.userData && m.userData._origOpacity === undefined) {
+        m.userData._origOpacity = typeof m.opacity === 'number' ? m.opacity : 1;
+        m.userData._origTransparent = m.transparent;
+      }
+      if (typeof m.opacity === 'number') {
+        m.opacity = opacity;
+        m.transparent = true;
+      }
+    });
+  });
+}
+
+function restoreModelOpacity(root) {
+  if (!root) return;
+  root.traverse((node) => {
+    const mat = node.material;
+    if (!mat) return;
+    const materials = Array.isArray(mat) ? mat : [mat];
+    materials.forEach((m) => {
+      if (m.userData && m.userData._origOpacity !== undefined) {
+        m.opacity = m.userData._origOpacity;
+        m.transparent = m.userData._origTransparent;
+      } else if (typeof m.opacity === 'number') {
+        m.opacity = 1;
+      }
+    });
+  });
 }
 
 function normalizeParentSources(sources) {

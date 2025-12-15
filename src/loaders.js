@@ -3,6 +3,7 @@ import {
   Box3,
   Color,
   CylinderGeometry,
+  Group,
   Mesh,
   MeshBasicMaterial,
   Quaternion,
@@ -13,6 +14,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const socketRegistry = [];
 const modelRegistry = new Map();
+let sharedMarker = null;
 
 /**
  * Load a model into the scene using a config-driven path and transforms.
@@ -25,6 +27,7 @@ const modelRegistry = new Map();
  * @param {boolean} [options.addToScene=true] - Whether to add the model to the scene.
  * @param {boolean} [options.visible=true] - Initial visibility for the model.
  * @param {string} [options.name] - Human-friendly name for logging.
+ * @param {number} [options.targetRadius] - Optional desired radius metadata for later scaling.
  * @returns {Promise<import('three').Object3D | null>}
  */
 export async function loadModel(scene, options = {}) {
@@ -35,7 +38,8 @@ export async function loadModel(scene, options = {}) {
     scale = 1,
     addToScene = true,
     visible = true,
-    name
+    name,
+    targetRadius
   } = options;
 
   if (!modelPath) {
@@ -69,7 +73,7 @@ export async function loadModel(scene, options = {}) {
       scene.add(model);
     }
     model.updateMatrixWorld(true);
-    registerModel(label, modelPath, model);
+    registerModel(label, modelPath, model, targetRadius);
     collectSockets(model, label, scene, options?.debug?.showSocketHelpers);
     console.info(`Loaded model "${label}" from ${modelPath}`);
     return model;
@@ -89,26 +93,68 @@ export function getSocketRegistry() {
 
 /**
  * Get registry of successfully loaded models.
- * @returns {{id: string, modelPath: string, model: import('three').Object3D}[]}
+ * @returns {{id: string, modelPath: string, model: import('three').Object3D, radius: number, targetRadius?: number}[]}
  */
 export function getModelRegistry() {
   return Array.from(modelRegistry.entries()).map(([id, value]) => ({
     id,
     modelPath: value.modelPath,
     model: value.model,
-    radius: value.radius
+    radius: value.radius,
+    targetRadius: value.targetRadius
   }));
 }
 
 /**
  * Get a single model meta entry.
  * @param {string} id
- * @returns {{id: string, modelPath: string, model: import('three').Object3D, radius: number} | undefined}
+ * @returns {{id: string, modelPath: string, model: import('three').Object3D, radius: number, targetRadius?: number} | undefined}
  */
 export function getModelMeta(id) {
   const entry = modelRegistry.get(id);
   if (!entry) return undefined;
   return { id, ...entry };
+}
+
+/**
+ * Get or create a shared marker visual (marker GLB or fallback cylinder).
+ * This marker is intended to be reused across socket highlights.
+ * @param {import('three').Scene} scene
+ * @returns {import('three').Object3D | null}
+ */
+export function getSharedMarker(scene) {
+  if (sharedMarker) {
+    if (scene && !sharedMarker.parent) {
+      scene.add(sharedMarker);
+    }
+    return sharedMarker;
+  }
+
+  const markerMeta = getModelMeta('marker');
+  if (markerMeta?.model) {
+    sharedMarker = markerMeta.model.clone(true);
+    sharedMarker.visible = false;
+    sharedMarker.userData.baseRadius =
+      Number.isFinite(markerMeta.radius) && markerMeta.radius > 0 ? markerMeta.radius : 1;
+    if (scene) {
+      scene.add(sharedMarker);
+    }
+    return sharedMarker;
+  }
+
+  // Fallback: lightweight cylinder marker.
+  const fallbackRadius = 0.05;
+  const height = fallbackRadius * 2;
+  const geometry = new CylinderGeometry(fallbackRadius, fallbackRadius, height, 16, 1, false);
+  const material = new MeshBasicMaterial({ color: new Color(0xff0000), transparent: true, opacity: 0.5 });
+  const fallback = new Mesh(geometry, material);
+  fallback.visible = false;
+  fallback.userData.baseRadius = fallbackRadius;
+  sharedMarker = fallback;
+  if (scene) {
+    scene.add(sharedMarker);
+  }
+  return sharedMarker;
 }
 
 async function preflightAsset(modelPath, label, addToScene) {
@@ -185,17 +231,19 @@ function collectSockets(model, objectId, scene, showHelpers = false) {
   }
 }
 
-function registerModel(id, modelPath, model) {
+function registerModel(id, modelPath, model, targetRadius) {
   const box = new Box3().setFromObject(model);
   const sphere = new Sphere();
   box.getBoundingSphere(sphere);
   const radius = Number.isFinite(sphere.radius) && sphere.radius > 0 ? sphere.radius : 1;
 
-  modelRegistry.set(id, { modelPath, model, radius });
+  const storedTarget =
+    Number.isFinite(targetRadius) && targetRadius > 0 ? Number(targetRadius) : undefined;
+
+  modelRegistry.set(id, { modelPath, model, radius, targetRadius: storedTarget });
 }
 
 function attachSocketHelper(node, role, scene, objectId) {
-  const color = new Color(0xff0000);
   const scale = node.parent ? node.parent.worldToLocal(new Vector3(1, 1, 1)).length() : 1;
   const markerSize = 0.02 * scale;
   // Overall marker diameter scaled to 75% of the original (reduce both radius and thickness).
@@ -203,10 +251,13 @@ function attachSocketHelper(node, role, scene, objectId) {
   const tube = markerSize * 1.125; // 0.75 * 1.5
   const outerRadius = radius + tube; // approximate outer radius of prior torus
   const height = tube * 2; // squat cylinder height
-  const geometry = new CylinderGeometry(outerRadius, outerRadius, height, 24, 1, false);
-  const material = new MeshBasicMaterial({ color, transparent: true, opacity: 0.5 });
-  const helper = new Mesh(geometry, material);
+  const helper = new Group();
   helper.name = `helper_${objectId}_${node.name}`;
+  helper.userData.outerRadius = outerRadius;
+  helper.userData.targetRadius = Number.isFinite(getModelMeta('marker')?.targetRadius)
+    ? getModelMeta('marker').targetRadius
+    : undefined;
+
   // Rotate 90deg about X so the cylinder axis/center aligns with socket +Y and faces outward.
   helper.rotation.set(Math.PI / 2, 0, 0);
   helper.position.set(0, 0, 0);

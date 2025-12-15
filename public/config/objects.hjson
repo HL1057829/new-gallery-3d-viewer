@@ -60,7 +60,10 @@
         xAxisMultiplier: 0.2,
         yAxisMultiplier: 1.0,
 
-        socketVisibilityIntervalMs: 500
+        socketVisibilityIntervalMs: 500,
+
+        // Drag visuals
+        dragOpacity: 0.5
       }
     },
 
@@ -287,7 +290,7 @@
       objClass: "marker"
       modelPath: "/assets/objects/marker/marker.glb"
       displayName: "Marker"
-      size: 0.25
+      size: 1.25
     }
 
   }

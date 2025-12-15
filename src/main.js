@@ -22,7 +22,7 @@ import { initDrag } from './drag.js';
   const baseRadius = Number.isFinite(baseMeta?.radius) && baseMeta.radius > 0 ? baseMeta.radius : 1;
 
   const loadedAccessories = await preloadAccessories(scene, accessories, baseSize, baseRadius, debug);
-  await preloadMarkers(scene, markers, debug);
+  await preloadMarkers(scene, markers, baseSize, baseRadius, debug);
   initTray({ accessories: loadedAccessories });
 
   preloadRemainingObjects(scene, bases, accessories, base.name, baseSize, debug);
@@ -54,7 +54,8 @@ import { initDrag } from './drag.js';
     baseSizeRank,
     baseModel: model,
     baseName: base.name,
-    visibilityIntervalMs: base?.interaction?.socketVisibilityIntervalMs
+    visibilityIntervalMs: base?.interaction?.socketVisibilityIntervalMs,
+    dragOpacity: base?.interaction?.dragOpacity
   });
 
   let previousTime = 0;
@@ -86,12 +87,16 @@ function preloadRemainingObjects(scene, bases, accessories, displayedBaseName, b
   );
 }
 
-async function preloadMarkers(scene, markers, debug) {
+async function preloadMarkers(scene, markers, baseSize, baseRadius, debug) {
   if (!markers || markers.length === 0) return [];
   const results = await Promise.all(
     markers.map((entry) =>
       loadModel(scene, {
         ...entry,
+        targetRadius:
+          Number.isFinite(entry?.size) && Number.isFinite(baseSize) && Number.isFinite(baseRadius) && baseSize > 0
+            ? (entry.size / baseSize) * baseRadius
+            : undefined,
         addToScene: false,
         visible: false,
         debug
