@@ -15,6 +15,7 @@ import { getModelMeta, getModelRegistry, getSharedMarker } from './loaders.js';
  *   baseSizeRank?: number,
  *   baseModel?: import('three').Object3D
  *   dragOpacity?: number
+ *   socketSelectionRadius?: number
  * }} options
  */
 export function initDrag(options) {
@@ -30,7 +31,8 @@ export function initDrag(options) {
     baseModel,
     baseName,
     attachedParents = [],
-    dragOpacity = 0.5
+    dragOpacity = 0.5,
+    socketSelectionRadius = 0.25
   } = options || {};
   const tray = document.getElementById('tray');
   if (!tray || !scene || !camera || !renderer || !interaction) return;
@@ -42,6 +44,7 @@ export function initDrag(options) {
   const baseAnchor = computeBaseAnchor(baseModel);
   let attachedSources = normalizeParentSources(attachedParents);
   let sharedMarker = null;
+  const occupiedSockets = new Set();
 
   tray.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
@@ -243,14 +246,19 @@ export function initDrag(options) {
     const childSockets = collectSocketsWorld(active.model, 'child');
     const parentSockets = collectParentSockets(active.parentSources);
     const occluderModels = active.parentSources.map((s) => s.model).filter(Boolean);
-    const threshold = baseRadius > 0 ? baseRadius * 0.25 : 0.3;
+    const radiusFactor =
+      Number.isFinite(socketSelectionRadius) && socketSelectionRadius > 0 ? socketSelectionRadius : 0.25;
+    const threshold = baseRadius > 0 ? baseRadius * radiusFactor : radiusFactor;
 
     // Only consider the first child socket for the dragged accessory
     const child = childSockets[0];
     let best = null;
     if (child) {
     const visibleParents = filterVisibleParents(
-      filterAllowedParents(parentSockets, active.allowedSockets, active.sizeRank),
+      filterOccupiedParents(
+        filterAllowedParents(parentSockets, active.allowedSockets, active.sizeRank),
+        occupiedSockets
+      ),
       child.position,
       threshold,
       occluderModels
@@ -376,9 +384,10 @@ export function initDrag(options) {
     model.position.copy(modelPosWorld);
   }
 
-  model.scale.copy(storedScale);
-  model.updateMatrixWorld(true);
-  restoreModelOpacity(model);
+    model.scale.copy(storedScale);
+    model.updateMatrixWorld(true);
+    occupiedSockets.add(socketKey(parent));
+    restoreModelOpacity(model);
 
     if (active.highlighted?.helper) {
       active.highlighted.helper.visible = false;
@@ -665,4 +674,19 @@ function filterAllowedParents(parents, allowedSockets, childSizeRank = Infinity)
     if (Array.isArray(allowedList) && allowedList.length === 0) return true;
     return Array.isArray(allowedList) && allowedList.includes(p.socketId);
   });
+}
+
+function filterOccupiedParents(parents, occupiedSet) {
+  if (!parents || parents.length === 0) return [];
+  return parents.filter((p) => {
+    const key = socketKey(p);
+    return key && !occupiedSet.has(key);
+  });
+}
+
+function socketKey(parent) {
+  if (!parent) return null;
+  if (parent.node?.uuid) return parent.node.uuid;
+  if (parent.socketId && parent.hostName) return `${parent.hostName}:${parent.socketId}`;
+  return parent.socketId || null;
 }

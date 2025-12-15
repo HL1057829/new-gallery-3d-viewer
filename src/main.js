@@ -55,7 +55,8 @@ import { initDrag } from './drag.js';
     baseModel: model,
     baseName: base.name,
     visibilityIntervalMs: base?.interaction?.socketVisibilityIntervalMs,
-    dragOpacity: base?.interaction?.dragOpacity
+    dragOpacity: base?.interaction?.dragOpacity,
+    socketSelectionRadius: base?.interaction?.socketSelectionRadius
   });
 
   let previousTime = 0;

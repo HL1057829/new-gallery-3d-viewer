@@ -63,7 +63,10 @@
         socketVisibilityIntervalMs: 500,
 
         // Drag visuals
-        dragOpacity: 0.5
+        dragOpacity: 0.5,
+
+        // Socket selection radius (multiplier of base radius)
+        socketSelectionRadius: 0.35
       }
     },
 
