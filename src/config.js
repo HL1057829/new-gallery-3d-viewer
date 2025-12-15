@@ -7,6 +7,7 @@ import HJSON from 'hjson';
  *   base: Record<string, any>,
  *   bases: Record<string, any>[],
  *   accessories: Record<string, any>[],
+ *   markers: Record<string, any>[],
  *   allObjects: Record<string, any>[],
  *   debug: Record<string, any>
  * }>}
@@ -41,6 +42,7 @@ export async function loadObjectConfig() {
 
   const bases = allObjects.filter((entry) => entry?.objClass === 'base');
   const accessories = allObjects.filter((entry) => entry?.objClass === 'accessory');
+  const markers = allObjects.filter((entry) => entry?.objClass === 'marker');
 
   if (bases.length === 0) {
     throw new Error('No base object found in configuration.');
@@ -48,5 +50,5 @@ export async function loadObjectConfig() {
 
   const base = bases[0];
 
-  return { base, bases, accessories, allObjects, debug };
+  return { base, bases, accessories, markers, allObjects, debug };
 }

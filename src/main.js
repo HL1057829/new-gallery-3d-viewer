@@ -8,7 +8,7 @@ import { initTray } from './tray.js';
 import { initDrag } from './drag.js';
 
 (async () => {
-  const { base, bases, accessories, debug } = await loadObjectConfig();
+  const { base, bases, accessories, markers, debug } = await loadObjectConfig();
   const { scene, renderer, camera } = createScene(base.scene);
   const model = await loadModel(scene, { ...base, debug });
   if (!model) {
@@ -22,6 +22,7 @@ import { initDrag } from './drag.js';
   const baseRadius = Number.isFinite(baseMeta?.radius) && baseMeta.radius > 0 ? baseMeta.radius : 1;
 
   const loadedAccessories = await preloadAccessories(scene, accessories, baseSize, baseRadius, debug);
+  await preloadMarkers(scene, markers, debug);
   initTray({ accessories: loadedAccessories });
 
   preloadRemainingObjects(scene, bases, accessories, base.name, baseSize, debug);
@@ -83,6 +84,27 @@ function preloadRemainingObjects(scene, bases, accessories, displayedBaseName, b
       });
     })
   );
+}
+
+async function preloadMarkers(scene, markers, debug) {
+  if (!markers || markers.length === 0) return [];
+  const results = await Promise.all(
+    markers.map((entry) =>
+      loadModel(scene, {
+        ...entry,
+        addToScene: false,
+        visible: false,
+        debug
+      })
+    )
+  );
+  const loadedNames = markers
+    .map((entry, index) => (results[index] ? entry.name || entry.displayName || 'marker' : null))
+    .filter(Boolean);
+  if (loadedNames.length > 0) {
+    console.info('Preloaded marker models', loadedNames);
+  }
+  return results.filter(Boolean);
 }
 
 async function preloadAccessories(scene, accessories, baseSize, baseRadius, debug) {
