@@ -16,6 +16,7 @@ import { getModelMeta, getModelRegistry, getSharedMarker } from './loaders.js';
  *   baseModel?: import('three').Object3D
  *   dragOpacity?: number
  *   socketSelectionRadius?: number
+ *   dragPlaneRadiusScale?: number
  * }} options
  */
 export function initDrag(options) {
@@ -32,7 +33,8 @@ export function initDrag(options) {
     baseName,
     attachedParents = [],
     dragOpacity = 0.5,
-    socketSelectionRadius = 0.25
+    socketSelectionRadius = 0.25,
+    dragPlaneRadiusScale = 1.02
   } = options || {};
   const tray = document.getElementById('tray');
   if (!tray || !scene || !camera || !renderer || !interaction) return;
@@ -206,8 +208,9 @@ export function initDrag(options) {
       const toBase = anchor.center.clone().sub(cam.position);
       const distanceToBase = Math.max(toBase.dot(normal), 0.1);
       // Place plane just in front of the base surface toward the camera to avoid clipping and oversized perspective.
-      const epsilon = Math.max(anchor.radius * 0.02, 0.05);
-      const targetDistance = Math.max(distanceToBase - anchor.radius + epsilon, 0.05);
+      const scale =
+        Number.isFinite(dragPlaneRadiusScale) && dragPlaneRadiusScale > 0 ? dragPlaneRadiusScale : 1.02;
+      const targetDistance = Math.max(distanceToBase - anchor.radius * scale, 0.05);
       const point = cam.position.clone().add(normal.clone().multiplyScalar(targetDistance));
       return new Plane().setFromNormalAndCoplanarPoint(normal, point);
     }
