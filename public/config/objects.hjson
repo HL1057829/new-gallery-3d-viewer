@@ -145,7 +145,7 @@
       thumbnail: "/assets/objects/piggy_face1/piggy_face1_thumb.png"
       displayName: "Piggy Face"
       size: 2.66
-      sizeRank: 4
+      sizeRank: 3.5
       influence: { radius: 0.12 }
       sockets: [
         { id: "socket_c_0", role: "child",  positionHint: "inside",      rotationOffset: [0, 0, 0] }
