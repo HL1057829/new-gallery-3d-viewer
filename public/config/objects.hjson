@@ -129,11 +129,9 @@
       influence: { radius: 0.15 }
       sockets: [
         { id: "socket_c_0", role: "child",  positionHint: "inside",      rotationOffset: [0, 0, 0] }
-        { id: "socket_p_0", role: "parent", positionHint: "forehead",    rotationOffset: [0, 0, 0] }
-        { id: "socket_p_1", role: "parent", positionHint: "left temple", rotationOffset: [0, 0, 0] }
-        { id: "socket_p_2", role: "parent", positionHint: "left cheek",  rotationOffset: [0, 0, 0] }
-        { id: "socket_p_3", role: "parent", positionHint: "right cheek", rotationOffset: [0, 0, 0] }
-        { id: "socket_p_4", role: "parent", positionHint: "right temple",rotationOffset: [0, 0, 0] }
+        { id: "socket_p_0", role: "parent", positionHint: "right cheek",    rotationOffset: [0, 0, 0] }
+        { id: "socket_p_1", role: "parent", positionHint: "left cheek", rotationOffset: [0, 0, 0] }
+        { id: "socket_p_2", role: "parent", positionHint: "nose",  rotationOffset: [0, 0, 0] }
       ]
       allowedSockets: {
         hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5", "socket_p_10"]
@@ -158,6 +156,7 @@
       allowedSockets: {
         hoon_dog: ["socket_p_1", "socket_p_3", "socket_p_5", "socket_p_10"]
         full_face: ["socket_p_0", "socket_p_5"]
+        half_face: ["socket_p_2"]
       }
     }
 
