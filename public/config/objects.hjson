@@ -124,7 +124,7 @@
       modelPath: "/assets/objects/half_face/half_face.glb"
       thumbnail: "/assets/objects/half_face/half_face_thumb.png"
       displayName: "Half Face"
-      size: 2.64
+      size: 3.2
       sizeRank: 4
       influence: { radius: 0.15 }
       sockets: [
