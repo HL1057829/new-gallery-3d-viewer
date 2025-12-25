@@ -61,6 +61,13 @@ export function initDrag(options) {
     if (!accessory) return;
 
     event.preventDefault();
+    if (target.setPointerCapture) {
+      try {
+        target.setPointerCapture(event.pointerId);
+      } catch (err) {
+        // ignore if capture fails
+      }
+    }
     interaction.disable();
 
     const registryEntry = getModelMeta(objectId) || getModelRegistry().find((entry) => entry.id === objectId);
@@ -119,6 +126,13 @@ export function initDrag(options) {
 
   function onPointerUp(event) {
     if (!active) return;
+    if (event.target?.releasePointerCapture) {
+      try {
+        event.target.releasePointerCapture(event.pointerId);
+      } catch (err) {
+        // ignore
+      }
+    }
     updatePointerFromEvent(event);
     // Refresh candidate at release in case it changed on the final frame
     logSnapCandidates();
