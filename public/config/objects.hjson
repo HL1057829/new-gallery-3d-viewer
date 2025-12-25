@@ -49,6 +49,8 @@
         uprightStrength: 0.25,
         // Spin speed threshold below which upright correction activates (rad/s)
         uprightThreshold: 0.6,
+        // Touch spin boost multiplier relative to mouse drag
+        touchSpinBoost: 6.0,
 
         // Zoom controls
         zoomSpeed: 0.002,

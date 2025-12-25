@@ -43,7 +43,8 @@ export function createInteractionController(
     minAngularSpeed = 0.0,
     initialYawSpin = 0.0,
     uprightStrength = 0.0,
-    uprightThreshold = 0.0
+    uprightThreshold = 0.0,
+    touchSpinBoost = 1.0
   } = interactionConfig;
   const { interactions: debugInteractions = false } = debugConfig;
 
@@ -128,7 +129,8 @@ export function createInteractionController(
     lastX = points[0].clientX;
     lastY = points[0].clientY;
 
-    const accel = spinAcceleration * 0.002;
+    const pointerBoost = event.pointerType === 'touch' ? touchSpinBoost : 1.0;
+    const accel = spinAcceleration * pointerBoost * 0.002;
     const rotY = dx * accel * yAxisMultiplier;
     const rotX = dy * accel * xAxisMultiplier;
 
