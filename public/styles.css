@@ -16,6 +16,7 @@ body {
   height: 100%;
   overflow: hidden;
   background: var(--background);
+  touch-action: none;
 }
 
 body {
