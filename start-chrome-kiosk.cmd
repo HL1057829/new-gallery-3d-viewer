@@ -1,0 +1,2 @@
+@echo off
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk http://localhost:4173 --no-first-run --disable-infobars --disable-pinch --overscroll-history-navigation=0 --disable-features=TouchpadAndWheelScrollLatching
