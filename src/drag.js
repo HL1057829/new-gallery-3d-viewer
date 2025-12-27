@@ -47,6 +47,7 @@ export function initDrag(options) {
   let attachedSources = normalizeParentSources(attachedParents);
   let sharedMarker = null;
   const occupiedSockets = new Set();
+  const snapAudio = createSnapAudio('/sounds/attach.wav');
 
   tray.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
@@ -421,6 +422,7 @@ export function initDrag(options) {
       rotation: model.quaternion.toArray(),
       scale: model.scale.toArray()
     });
+    playSnapSound(snapAudio);
     active.highlighted = null;
     active.bestCandidate = null;
   }
@@ -613,6 +615,32 @@ function restoreModelOpacity(root) {
       }
     });
   });
+}
+
+function createSnapAudio(src) {
+  try {
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    return audio;
+  } catch (err) {
+    console.warn('Failed to create snap audio', err);
+    return null;
+  }
+}
+
+function playSnapSound(audio) {
+  if (!audio) return;
+  try {
+    audio.currentTime = 0;
+    const playPromise = audio.play();
+    if (playPromise?.catch) {
+      playPromise.catch(() => {
+        // ignore playback errors (e.g., gesture gating)
+      });
+    }
+  } catch (err) {
+    // ignore
+  }
 }
 
 function normalizeParentSources(sources) {
