@@ -1,6 +1,6 @@
 # Interactive 3D Gallery Viewer
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20016028.svg)](https://doi.org/10.5281/zenodo.20016028)
 
 A modular touchscreen-friendly system for interacting with 3D artworks.
 
@@ -127,8 +127,8 @@ If you use or reference this project in academic work, please cite it as:
   title     = {{Interactive 3D Gallery Viewer}},
   year      = {2025},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.XXXXXXX},
-  url       = {https://doi.org/10.5281/zenodo.XXXXXXX},
+  doi       = {10.5281/zenodo.20016028},
+  url       = {https://doi.org/10.5281/zenodo.20016028},
   orcid     = {0009-0000-1191-8245}
 }
 ```
