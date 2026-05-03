@@ -1,5 +1,7 @@
 # Interactive 3D Gallery Viewer
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
+
 A modular touchscreen-friendly system for interacting with 3D artworks.
 
 This project provides a lightweight, installation-ready viewer for gallery environments. Users can rotate a sculpture, drag accessories onto it, and explore multiple configurations — all running locally in a browser using Three.js.
@@ -60,7 +62,7 @@ index.html
 README.md
 ```
 
-# How to Add New Artworks
+## How to Add New Artworks
 
 1. Create a folder for the object under `/assets/objects/<name>/`
 2. Export a `.glb` with:
@@ -97,7 +99,7 @@ Serve locally:
 ```
 npx serve dist
 ```
-# Asset Guidelines
+## Asset Guidelines
 
 - Use lowercase folder + file names (e.g., `dog.glb`, `mask_bunny.glb`)
 - GLB with embedded textures preferred
@@ -105,11 +107,34 @@ npx serve dist
 - Models should face +Z and be upright
 - Include a preview image for the accessory tray
 
-# Developer Notes
+---
 
-## Code style
-- Any JavaScript file we touch should stay JSDoc compliant.
-- Add a short descriptive header comment at the very top of each touched `.js` file (e.g. `/** @file Brief description of what this file does. */`).
+## Author
 
-# License
+**Wesley Modes**  
+University of Cincinnati  
+ORCID: [0009-0000-1191-8245](https://orcid.org/0009-0000-1191-8245)
+
+---
+
+## Citation
+
+If you use or reference this project in academic work, please cite it as:
+
+```bibtex
+@software{modes_2025_gallery3dviewer,
+  author    = {Modes, Wesley},
+  title     = {{Interactive 3D Gallery Viewer}},
+  year      = {2025},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.XXXXXXX},
+  url       = {https://doi.org/10.5281/zenodo.XXXXXXX},
+  orcid     = {0009-0000-1191-8245}
+}
+```
+
+---
+
+## License
+
 MIT
