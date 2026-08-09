@@ -21,7 +21,13 @@ import { initDrag } from './drag.js';
   const baseMeta = getModelMeta(base.name);
   const baseRadius = Number.isFinite(baseMeta?.radius) && baseMeta.radius > 0 ? baseMeta.radius : 1;
 
-  const loadedAccessories = [];
+  const loadedAccessories = await preloadAccessories(
+  scene,
+  accessories.slice(0, 1),
+  baseSize,
+  baseRadius,
+  debug
+);
 
   initTray({ accessories: loadedAccessories });
 
