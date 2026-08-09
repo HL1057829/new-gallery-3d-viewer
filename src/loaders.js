@@ -47,8 +47,11 @@ export async function loadModel(scene, options = {}) {
   }
 
   const label = name || modelPath;
+const resolvedModelPath = modelPath.startsWith('/')
+  ? `${import.meta.env.BASE_URL}${modelPath.slice(1)}`
+  : modelPath;
 
-  const assetOk = await preflightAsset(modelPath, label, addToScene);
+const assetOk = await preflightAsset(resolvedModelPath, label, addToScene);
   if (!assetOk) {
     return null;
   }
