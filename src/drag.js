@@ -365,63 +365,116 @@ clone.traverse((node) => {
   function applyHelperHighlight(helper) {}
 
   function snapToParent(candidate) {
-    const { parent, child } = candidate;
-    if (!parent?.node || !child?.node || !active?.model) return;
+  const { parent, child } = candidate;
 
-    const model = active.model;
-    const storedScale = model.scale.clone();
+  if (!parent?.node || !child?.node || !active?.model) {
+    console.warn('Snap skipped: invalid socket data');
+    return;
+  }
+
+  const model = active.model;
+
+  try {
+    // Make sure all transforms are current before reading matrices.
     model.updateMatrixWorld(true);
     parent.node.updateMatrixWorld(true);
     child.node.updateMatrixWorld(true);
-    const hostRoot = getHostRoot(parent.node);
-    hostRoot?.updateMatrixWorld(true);
 
-    // Decompose child local transform (position/orientation relative to accessory).
+    const storedScale = model.scale.clone();
+
+    // Child socket transform relative to the accessory root.
     const childLocalPos = new Vector3();
     const childLocalQuat = new Quaternion();
-    child.node.matrix.decompose(childLocalPos, childLocalQuat, new Vector3());
+    const childLocalScale = new Vector3();
 
-    // Desired world transform for the child socket (parent socket + 180° Y flip).
-    const rotateY180 = new Matrix4().makeRotationY(Math.PI);
-    const desiredChildWorld = parent.node.matrixWorld.clone().multiply(rotateY180);
-    const desiredChildPos = new Vector3();
-    const desiredChildQuat = new Quaternion();
-    desiredChildWorld.decompose(desiredChildPos, desiredChildQuat, new Vector3());
+    child.node.matrix.decompose(
+      childLocalPos,
+      childLocalQuat,
+      childLocalScale
+    );
 
-    // Solve model rotation: R_model * R_childLocal = R_childDesired  =>  R_model = R_childDesired * inv(R_childLocal)
-    const modelQuatWorld = desiredChildQuat.clone().multiply(childLocalQuat.clone().invert());
+    // Parent socket world transform.
+    const parentWorldQuat = new Quaternion();
+    const parentWorldPos = new Vector3();
 
-    // Solve model position so scaled, rotated child local origin lands on desired parent socket.
-    const scaledChildOffset = childLocalPos.clone().multiply(storedScale).applyQuaternion(modelQuatWorld);
-    const modelPosWorld = desiredChildPos.clone().sub(scaledChildOffset);
+    parent.node.getWorldQuaternion(parentWorldQuat);
+    parent.node.getWorldPosition(parentWorldPos);
 
-    if (hostRoot && model.parent !== hostRoot) {
-      hostRoot.add(model);
-    }
+    // Face the accessory toward the socket.
+    const rotateY180 = new Quaternion().setFromAxisAngle(
+      new Vector3(0, 1, 0),
+      Math.PI
+    );
+
+    const desiredChildQuat = parentWorldQuat
+      .clone()
+      .multiply(rotateY180);
+
+    // Solve accessory root rotation.
+    const modelQuatWorld = desiredChildQuat
+      .clone()
+      .multiply(childLocalQuat.clone().invert());
+
+    // Calculate where the child socket currently sits relative
+    // to the accessory root after scale + rotation.
+    const scaledChildOffset = childLocalPos
+      .clone()
+      .multiply(storedScale)
+      .applyQuaternion(modelQuatWorld);
+
+    const modelPosWorld = parentWorldPos
+      .clone()
+      .sub(scaledChildOffset);
+
+    // Find the host root safely.
+    const hostRoot = getHostRoot(parent.node);
 
     if (hostRoot) {
-      // Convert to host-local space.
+      hostRoot.updateMatrixWorld(true);
+
+      if (model.parent !== hostRoot) {
+        hostRoot.add(model);
+      }
+
       const hostQuat = new Quaternion();
       hostRoot.getWorldQuaternion(hostQuat);
-      model.quaternion.copy(hostQuat.clone().invert().multiply(modelQuatWorld));
-      model.position.copy(hostRoot.worldToLocal(modelPosWorld.clone()));
+
+      model.quaternion.copy(
+        hostQuat.clone().invert().multiply(modelQuatWorld)
+      );
+
+      const localPosition = hostRoot.worldToLocal(
+        modelPosWorld.clone()
+      );
+
+      model.position.copy(localPosition);
     } else {
       model.quaternion.copy(modelQuatWorld);
-    model.position.copy(modelPosWorld);
-  }
+      model.position.copy(modelPosWorld);
+    }
 
     model.scale.copy(storedScale);
     model.updateMatrixWorld(true);
+
     occupiedSockets.add(socketKey(parent));
+
     restoreModelOpacity(model);
 
     if (active.highlighted?.helper) {
       active.highlighted.helper.visible = false;
     }
+
     attachedSources = [
       ...attachedSources,
-      { name: active.objectId, model, sizeRank: Number.isFinite(active.sizeRank) ? active.sizeRank : Infinity }
+      {
+        name: active.objectId,
+        model,
+        sizeRank: Number.isFinite(active.sizeRank)
+          ? active.sizeRank
+          : Infinity
+      }
     ];
+
     console.info('Attached accessory', {
       accessory: active.objectId,
       parentSocket: parent.socketId,
@@ -430,10 +483,17 @@ clone.traverse((node) => {
       rotation: model.quaternion.toArray(),
       scale: model.scale.toArray()
     });
+
     playSnapSound(snapAudio);
+
     active.highlighted = null;
     active.bestCandidate = null;
+
+  } catch (error) {
+    console.error('Safe snap transform failed:', error);
+    throw error;
   }
+}
 
   function getHostRoot(node) {
     let current = node;
