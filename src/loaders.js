@@ -76,7 +76,7 @@ const assetOk = await preflightAsset(resolvedModelPath, label, addToScene);
       scene.add(model);
     }
     model.updateMatrixWorld(true);
-    registerModel(label, modelPath, model, targetRadius);
+    registerModel(label, resolvedModelPath, model, targetRadius);
     collectSockets(model, label, scene, options?.debug?.showSocketHelpers);
     console.info(`Loaded model "${label}" from ${modelPath}`);
     return model;
