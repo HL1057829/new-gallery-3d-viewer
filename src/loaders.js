@@ -46,19 +46,22 @@ export async function loadModel(scene, options = {}) {
     throw new Error('modelPath is required to load a model.');
   }
 
-  const label = name || modelPath;
+const label = name || modelPath;
+
 const resolvedModelPath = modelPath.startsWith('/')
   ? `${import.meta.env.BASE_URL}${modelPath.slice(1)}`
   : modelPath;
 
 const assetOk = await preflightAsset(resolvedModelPath, label, addToScene);
-  if (!assetOk) {
-    return null;
-  }
 
-  const loader = new GLTFLoader();
-  try {
-    const glb = await loader.loadAsync(resolvedModelPath);
+if (!assetOk) {
+  return null;
+}
+
+const loader = new GLTFLoader();
+
+try {
+  const glb = await loader.loadAsync(resolvedModelPath);
     const model = glb.scene;
 
     model.position.set(position[0], position[1], position[2]);
