@@ -58,7 +58,7 @@ const assetOk = await preflightAsset(resolvedModelPath, label, addToScene);
 
   const loader = new GLTFLoader();
   try {
-    const glb = await loader.loadAsync(modelPath);
+    const glb = await loader.loadAsync(resolvedModelPath);
     const model = glb.scene;
 
     model.position.set(position[0], position[1], position[2]);
