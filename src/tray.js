@@ -26,7 +26,9 @@ export function initTray({ accessories = [] } = {}) {
   accessories.forEach((item) => {
     const img = document.createElement('img');
     img.className = 'thumb';
-    img.src = item.thumbnail || '';
+    img.src = item.thumbnail?.startsWith('/')
+  ? `${import.meta.env.BASE_URL}${item.thumbnail.slice(1)}`
+  : item.thumbnail || '';
     img.alt = item.name || '';
     img.title = '';
     img.dataset.tooltip = item.displayName || item.name || '';
