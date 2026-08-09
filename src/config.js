@@ -13,7 +13,7 @@ import HJSON from 'hjson';
  * }>}
  */
 export async function loadObjectConfig() {
-  const response = await fetch('/config/objects.hjson');
+const response = await fetch(`${import.meta.env.BASE_URL}config/objects.hjson`);
   if (!response.ok) {
     throw new Error(`Failed to load object config: ${response.status} ${response.statusText}`);
   }
