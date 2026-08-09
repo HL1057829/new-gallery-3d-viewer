@@ -21,11 +21,9 @@ import { initDrag } from './drag.js';
   const baseMeta = getModelMeta(base.name);
   const baseRadius = Number.isFinite(baseMeta?.radius) && baseMeta.radius > 0 ? baseMeta.radius : 1;
 
-  const loadedAccessories = await preloadAccessories(scene, accessories, baseSize, baseRadius, debug);
-  await preloadMarkers(scene, markers, baseSize, baseRadius, debug);
-  initTray({ accessories: loadedAccessories });
+  const loadedAccessories = [];
 
-  preloadRemainingObjects(scene, bases, accessories, base.name, baseSize, debug);
+  initTray({ accessories: loadedAccessories });
 
   // Fit camera to model with optional portrait scaling
   const baseCameraZ = camera.position.z;
