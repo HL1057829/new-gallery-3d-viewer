@@ -78,6 +78,14 @@ export function initDrag(options) {
     }
 
     const clone = registryEntry.model.clone(true);
+
+clone.traverse((node) => {
+  if (!node.isMesh) return;
+
+  node.frustumCulled = true;
+  node.castShadow = false;
+  node.receiveShadow = false;
+});
     clone.rotation.set(0, 0, 0);
     clone.renderOrder = 1;
     clone.visible = true;
