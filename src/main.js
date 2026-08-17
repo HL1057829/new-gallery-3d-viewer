@@ -23,7 +23,7 @@ import { initDrag } from './drag.js';
 
   const loadedAccessories = await preloadAccessories(
   scene,
-  accessories.slice(0, 3),
+  accessories,
   baseSize,
   baseRadius,
   debug
