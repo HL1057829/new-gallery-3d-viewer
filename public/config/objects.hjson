@@ -216,9 +216,11 @@
       // allowedSockets omitted => any socket on any larger host
     }
 
-     bear_ear: {
-       objClass: "accessory"
-       modelPath: "/assets/objects/bear_ear/bear_ear.glb"
+bear_ear: {
+  objClass: "accessory"
+  modelPath: "/assets/objects/bear_ear/bear_ear.glb"
+  thumbnail: "/assets/objects/bear_ear/bear_ear_thumb.png"
+  displayName: "Bear Ear"
        thumbnail: "/assets/objects/bear_ear/bear_ear_thumb.png"
        displayName: "Bear Ear"
        size: 1
