@@ -8,7 +8,7 @@ import { initTray } from './tray.js';
 import { initDrag } from './drag.js';
 
 (async () => {
-  const { base, bases, accessories, markers, debug } = await loadObjectConfig();
+  const { base, accessories, debug } = await loadObjectConfig();
   const { scene, renderer, camera } = createScene(base.scene);
   const model = await loadModel(scene, { ...base, debug });
   if (!model) {
@@ -21,10 +21,10 @@ import { initDrag } from './drag.js';
   const baseMeta = getModelMeta(base.name);
   const baseRadius = Number.isFinite(baseMeta?.radius) && baseMeta.radius > 0 ? baseMeta.radius : 1;
 
-  // Start the viewer as soon as the base model is ready. Accessories are loaded
-  // one at a time after startup so iOS Safari does not have to decode several
-  // GLBs simultaneously. The tray still contains all configured accessories.
-  initTray({ accessories });
+  // Diagnostic iPhone build: load ONLY the base model. No accessories,
+  // alternate bases, or markers are decoded. This isolates whether Safari's
+  // crash is caused by the base GLB/WebGL renderer or by additional assets.
+  initTray({ accessories: [] });
 
   const baseCameraZ = camera.position.z;
   const fitDistance = fitCameraToModel(camera, model, {
@@ -46,7 +46,7 @@ import { initDrag } from './drag.js';
     camera,
     renderer,
     interaction: interactions,
-    accessories,
+    accessories: [],
     baseSize,
     baseRadius,
     baseSizeRank,
@@ -54,14 +54,8 @@ import { initDrag } from './drag.js';
     baseName: base.name,
     visibilityIntervalMs: base?.interaction?.socketVisibilityIntervalMs,
     dragOpacity: base?.interaction?.dragOpacity,
-    socketSelectionRadius: base?.interaction?.socketSelectionRadius,
     dragPlaneRadiusScale: base?.interaction?.dragPlaneRadiusScale
   });
-
-  // Keep alternate bases and markers out of the critical startup path.
-  void preloadRemainingBases(scene, bases, base.name, baseSize, debug);
-  void preloadAccessoriesSequentially(scene, accessories, baseSize, baseRadius, debug);
-  void preloadMarkers(scene, markers, baseSize, baseRadius, debug);
 
   let previousTime = 0;
   renderer.setAnimationLoop((time) => {
@@ -71,63 +65,6 @@ import { initDrag } from './drag.js';
     renderer.render(scene, camera);
   });
 })();
-
-async function preloadAccessoriesSequentially(scene, accessories, baseSize, baseRadius, debug) {
-  // Give Safari a chance to render the base scene before starting GLB decoding.
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  for (const entry of accessories) {
-    if (getModelMeta(entry?.name)?.model) continue;
-    await loadModel(scene, {
-      ...entry,
-      addToScene: false,
-      visible: false,
-      debug
-    });
-    const meta = getModelMeta(entry?.name);
-    if (meta?.model) {
-      const accessoryRadius = Number.isFinite(meta.radius) && meta.radius > 0 ? meta.radius : undefined;
-      const scale = scaleForEntry(entry, baseSize, baseRadius, accessoryRadius);
-      if (scale != null) meta.model.scale.setScalar(scale);
-    }
-    // Release the main thread between GLB decodes on mobile Safari.
-    await new Promise((resolve) => setTimeout(resolve, 150));
-  }
-}
-
-async function preloadRemainingBases(scene, bases, displayedBaseName, baseSize, debug) {
-  const remainingBases = bases.filter((entry) => entry.name !== displayedBaseName);
-  for (const entry of remainingBases) {
-    const scale = scaleForEntry(entry, baseSize);
-    await loadModel(scene, {
-      ...entry,
-      ...(scale != null ? { scale } : {}),
-      addToScene: false,
-      visible: false,
-      debug
-    });
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-}
-
-async function preloadMarkers(scene, markers, baseSize, baseRadius, debug) {
-  if (!markers || markers.length === 0) return [];
-  const results = [];
-  for (const entry of markers) {
-    const result = await loadModel(scene, {
-      ...entry,
-      targetRadius:
-        Number.isFinite(entry?.size) && Number.isFinite(baseSize) && Number.isFinite(baseRadius) && baseSize > 0
-          ? (entry.size / baseSize) * baseRadius
-          : undefined,
-      addToScene: false,
-      visible: false,
-      debug
-    });
-    if (result) results.push(result);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  return results;
-}
 
 function fitCameraToModel(camera, model, options = {}) {
   const padding = options.padding ?? 1.0;
@@ -159,17 +96,4 @@ function scaleZoomRange(interaction, baseDistance, fitDistance) {
   if (interaction.minZoom != null) next.minZoom = interaction.minZoom * scale;
   if (interaction.maxZoom != null) next.maxZoom = interaction.maxZoom * scale;
   return next;
-}
-
-function scaleForEntry(entry, baseSize, baseRadius, accessoryRadius) {
-  if (!entry || entry.objClass !== 'accessory') return undefined;
-  const base = Number.isFinite(baseSize) && baseSize > 0 ? baseSize : 1;
-  const size = Number.isFinite(entry.size) ? entry.size : null;
-  if (size === null) return undefined;
-  const relativeScale = size / base;
-  const radiusRatio = Number.isFinite(baseRadius) && Number.isFinite(accessoryRadius) && accessoryRadius > 0
-    ? baseRadius / accessoryRadius
-    : 1;
-  const finalScale = relativeScale * radiusRatio;
-  return Number.isFinite(finalScale) && finalScale > 0 ? finalScale : undefined;
 }
