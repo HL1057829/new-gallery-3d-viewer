@@ -117,9 +117,19 @@ ORCID: [0009-0000-1191-8245](https://orcid.org/0009-0000-1191-8245)
 
 ---
 
-## Citation
+## Credits
 
-If you use or reference this project in academic work, please cite it as:
+This project is based on and adapted from Wesley Modes’ *Interactive 3D Gallery Viewer* (2025), published through Zenodo.
+
+### Original Project
+
+**Modes, Wesley.** *Interactive 3D Gallery Viewer*. 2025. Zenodo.  
+DOI: [10.5281/zenodo.20016028](https://doi.org/10.5281/zenodo.20016028)  
+ORCID: [0009-0000-1191-8245](https://orcid.org/0009-0000-1191-8245)
+
+### Citation
+
+If you use or reference the original viewer in academic work, please cite:
 
 ```bibtex
 @software{modes_2025_gallery3dviewer,
