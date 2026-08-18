@@ -7,7 +7,7 @@
  * Bear Nose, and Plunger. Bear Ear remains available as an underlying model
  * but is not shown as a tray item.
  */
-export function initTray({ accessories = [] } = {}) {
+export function initTray({ accessories = [], loadAccessory = null } = {}) {
   const tray = document.getElementById('tray');
   if (!tray) return;
 
@@ -24,7 +24,6 @@ export function initTray({ accessories = [] } = {}) {
   refreshBtn.addEventListener('click', () => window.location.reload());
   tray.appendChild(refreshBtn);
 
-  // Exact visible tray order. This also prevents duplicate display labels.
   const visibleIds = [
     'full_face',
     'half_face',
@@ -50,7 +49,9 @@ export function initTray({ accessories = [] } = {}) {
     img.title = '';
     img.dataset.tooltip = displayName;
     img.dataset.objectId = item.name || '';
+    img.dataset.modelReady = 'false';
     img.draggable = false;
+
     img.addEventListener('pointerenter', (event) => {
       if (event.pointerType === 'mouse') showTooltip(img);
     });
@@ -65,6 +66,49 @@ export function initTray({ accessories = [] } = {}) {
     img.addEventListener('pointercancel', () => hideTooltip());
     tray.appendChild(img);
   });
+
+  // This listener runs before drag.js's bubbling pointerdown listener.
+  // If an accessory is not decoded yet, pause the original gesture, load only
+  // that one GLB, then replay the pointerdown so the existing drag/snap code
+  // continues unchanged.
+  tray.addEventListener('pointerdown', async (event) => {
+    const target = event.target?.closest?.('[data-object-id]');
+    if (!target || target.dataset.modelReady === 'true' || !loadAccessory) return;
+
+    const accessory = byId.get(target.dataset.objectId);
+    if (!accessory) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    target.dataset.modelLoading = 'true';
+
+    try {
+      const loaded = await loadAccessory(accessory);
+      if (!loaded) throw new Error(`Unable to load accessory: ${accessory.name}`);
+      target.dataset.modelReady = 'true';
+
+      const replay = new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        pointerId: event.pointerId,
+        pointerType: event.pointerType,
+        isPrimary: event.isPrimary,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        screenX: event.screenX,
+        screenY: event.screenY,
+        button: event.button,
+        buttons: event.buttons
+      });
+      target.dispatchEvent(replay);
+    } catch (error) {
+      console.error('Failed to lazy-load accessory', accessory.name, error);
+      target.dataset.modelReady = 'false';
+    } finally {
+      target.dataset.modelLoading = 'false';
+    }
+  }, true);
 
   function showTooltip(el) {
     tooltip.textContent = el.dataset.tooltip || '';
