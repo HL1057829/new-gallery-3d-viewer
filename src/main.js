@@ -18,9 +18,8 @@ import { initDrag } from './drag.js';
   const baseMeta = getModelMeta(base.name);
   const baseRadius = Number.isFinite(baseMeta?.radius) && baseMeta.radius > 0 ? baseMeta.radius : 1;
 
-  // Keep all seven thumbnails visible, but do not preload accessory GLBs.
-  // Each accessory is loaded only when the visitor actually selects it.
-  initTray({ accessories });
+  const loadAccessory = (entry) => loadAccessoryModel(scene, entry, baseSize, baseRadius, debug);
+  initTray({ accessories, loadAccessory });
 
   const baseCameraZ = camera.position.z;
   const fitDistance = fitCameraToModel(camera, model, {
@@ -37,7 +36,7 @@ import { initDrag } from './drag.js';
     dragOpacity: base?.interaction?.dragOpacity,
     socketSelectionRadius: base?.interaction?.socketSelectionRadius,
     dragPlaneRadiusScale: base?.interaction?.dragPlaneRadiusScale,
-    loadAccessory: (entry) => loadAccessory(scene, entry, baseSize, baseRadius, debug)
+    loadAccessory
   });
 
   let previousTime = 0;
@@ -49,7 +48,7 @@ import { initDrag } from './drag.js';
   });
 })();
 
-async function loadAccessory(scene, entry, baseSize, baseRadius, debug) {
+async function loadAccessoryModel(scene, entry, baseSize, baseRadius, debug) {
   if (!entry?.name) return null;
   const existing = getModelMeta(entry.name);
   if (existing?.model) return existing.model;
