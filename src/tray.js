@@ -1,10 +1,11 @@
 /** @file Renders the accessory thumbnail tray on the left side. */
 
 /**
- * Initialize the tray UI with accessory thumbnails.
- * Duplicate display names are shown only once in the tray while preserving
- * all underlying accessory models and socket behavior.
- * @param {{accessories: {name: string, thumbnail?: string, displayName?: string}[]}} config
+ * Initialize the accessory thumbnail tray.
+ * The visible tray intentionally contains exactly the seven user-facing
+ * accessories: Full Face, Half Face, Piggy Face, Rabbit Ear, Rabbit Nose,
+ * Bear Nose, and Plunger. Bear Ear remains available as an underlying model
+ * but is not shown as a tray item.
  */
 export function initTray({ accessories = [] } = {}) {
   const tray = document.getElementById('tray');
@@ -20,25 +21,27 @@ export function initTray({ accessories = [] } = {}) {
   refreshBtn.className = 'refresh';
   refreshBtn.textContent = '⟳';
   refreshBtn.setAttribute('aria-label', 'Refresh');
-  refreshBtn.addEventListener('click', () => {
-    window.location.reload();
-  });
+  refreshBtn.addEventListener('click', () => window.location.reload());
   tray.appendChild(refreshBtn);
 
-  // The configuration contains two variants of Piggy Face, but the tray
-  // should present one Piggy Face button. Likewise, if a duplicate Rabbit Ear
-  // entry is ever introduced, only the first one is shown. The original
-  // accessory objects remain loaded and usable internally.
-  const seenDisplayNames = new Set();
+  // Exact visible tray order. This also prevents duplicate display labels.
+  const visibleIds = [
+    'full_face',
+    'half_face',
+    'piggy_face1',
+    'rabbit_ear',
+    'rabbit_nose',
+    'bear_nose',
+    'plunger1'
+  ];
 
-  accessories.forEach((item) => {
+  const byId = new Map(accessories.map((item) => [item.name, item]));
+
+  visibleIds.forEach((id) => {
+    const item = byId.get(id);
+    if (!item) return;
+
     const displayName = item.displayName || item.name || '';
-    const normalizedName = displayName.trim().toLowerCase();
-    if (normalizedName === 'piggy face' || normalizedName === 'rabbit ear') {
-      if (seenDisplayNames.has(normalizedName)) return;
-      seenDisplayNames.add(normalizedName);
-    }
-
     const img = document.createElement('img');
     img.src = item.thumbnail?.startsWith('/')
       ? `${import.meta.env.BASE_URL}${item.thumbnail.slice(1)}`
@@ -75,10 +78,8 @@ export function initTray({ accessories = [] } = {}) {
 
   function updateTooltipPosition(el) {
     const rect = el.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.bottom;
-    tooltip.style.left = `${x}px`;
-    tooltip.style.top = `${y}px`;
+    tooltip.style.left = `${rect.left + rect.width / 2}px`;
+    tooltip.style.top = `${rect.bottom}px`;
   }
 }
 
