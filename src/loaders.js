@@ -16,6 +16,8 @@ const socketRegistry = [];
 const modelRegistry = new Map();
 let sharedMarker = null;
 
+const isMobileDevice = () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
 export async function loadModel(scene, options = {}) {
   const {
     modelPath,
@@ -37,10 +39,15 @@ export async function loadModel(scene, options = {}) {
   const loader = new GLTFLoader();
   try {
     // Do not preflight with HEAD. GitHub Pages/CDNs can return inconsistent
-    // HEAD metadata for GLB files even when GET works correctly. Let GLTFLoader
-    // perform the actual request instead.
+    // HEAD metadata for GLB files even when GET works correctly.
     const glb = await loader.loadAsync(resolvedModelPath);
     const model = glb.scene;
+
+    // iOS Safari can terminate the WebGL page when several large GLB textures
+    // are uploaded to the GPU. Keep the desktop assets untouched, but reduce
+    // oversized mobile textures before Three.js uploads them.
+    if (isMobileDevice()) optimizeTexturesForMobile(model);
+
     model.position.set(position[0], position[1], position[2]);
     model.rotation.set(rotation[0], rotation[1], rotation[2]);
     if (Array.isArray(scale)) model.scale.set(scale[0] ?? 1, scale[1] ?? 1, scale[2] ?? 1);
@@ -55,6 +62,62 @@ export async function loadModel(scene, options = {}) {
   } catch (error) {
     console.warn(`WARNING: Failed to load model "${label}" from ${modelPath}: ${error?.message || error}`);
     return null;
+  }
+}
+
+/**
+ * Reduce only oversized texture dimensions on mobile. The visual result stays
+ * the same, but a 2048/4096px texture no longer consumes its full GPU memory.
+ * Repeated instances continue to share the same texture object.
+ */
+function optimizeTexturesForMobile(model) {
+  const MAX_TEXTURE_SIZE = 1024;
+  const seen = new Set();
+
+  model.traverse((node) => {
+    if (!node?.isMesh || !node.material) return;
+    const materials = Array.isArray(node.material) ? node.material : [node.material];
+    materials.forEach((material) => {
+      Object.values(material).forEach((value) => {
+        if (!value?.isTexture || seen.has(value)) return;
+        seen.add(value);
+        downscaleTexture(value, MAX_TEXTURE_SIZE);
+      });
+    });
+  });
+}
+
+function downscaleTexture(texture, maxSize) {
+  const image = texture.image;
+  const width = image?.width || image?.videoWidth || 0;
+  const height = image?.height || image?.videoHeight || 0;
+  if (!width || !height || Math.max(width, height) <= maxSize) {
+    if (image && !image.isCompressedTexture) {
+      texture.generateMipmaps = false;
+      texture.needsUpdate = true;
+    }
+    return;
+  }
+
+  // Canvas is deliberately used as the mobile texture source. It releases the
+  // oversized decoded image after the texture is replaced, reducing both JS
+  // and GPU pressure. WebGL uploads the bounded canvas instead.
+  const scale = maxSize / Math.max(width, height);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const context = canvas.getContext('2d', { alpha: true });
+  if (!context) return;
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  texture.image = canvas;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+
+  // ImageBitmap keeps decoded backing storage until explicitly closed.
+  // Closing it is safe because the texture now points at the canvas copy.
+  if (typeof image.close === 'function') {
+    try { image.close(); } catch (_) { /* ignore */ }
   }
 }
 
