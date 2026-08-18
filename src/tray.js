@@ -14,6 +14,19 @@ export function initTray({ accessories = [], loadAccessory = null } = {}) {
   tray.replaceChildren();
   if (accessories.length === 0) return;
 
+  // On phones the seven thumbnails can extend beyond the viewport. Make only
+  // the tray scrollable so every mask remains reachable; the canvas and 3D
+  // interaction are otherwise untouched.
+  if (isNarrowTouchDevice()) {
+    tray.style.maxHeight = 'calc(100dvh - 24px)';
+    tray.style.overflowY = 'auto';
+    tray.style.overflowX = 'hidden';
+    tray.style.webkitOverflowScrolling = 'touch';
+    tray.style.touchAction = 'pan-y';
+    tray.style.paddingBottom = '12px';
+    tray.style.boxSizing = 'border-box';
+  }
+
   const tooltip = ensureTooltip();
 
   const refreshBtn = document.createElement('button');
@@ -125,6 +138,11 @@ export function initTray({ accessories = [], loadAccessory = null } = {}) {
     tooltip.style.left = `${rect.left + rect.width / 2}px`;
     tooltip.style.top = `${rect.bottom}px`;
   }
+}
+
+function isNarrowTouchDevice() {
+  return window.matchMedia?.('(pointer: coarse) and (max-width: 700px)').matches
+    || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
 
 function ensureTooltip() {
