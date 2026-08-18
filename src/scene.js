@@ -12,8 +12,8 @@ const defaultSceneConfig = {
 
 /**
  * Create a Three.js scene with values merged from config.
- * @param {Object} [sceneConfig]
- * @returns {{scene: import('three').Scene, camera: import('three').Camera, renderer: import('three').WebGLRenderer}}
+ * Mobile Safari gets a lower GPU framebuffer cost while desktop rendering is
+ * left at the existing quality settings.
  */
 export function createScene(sceneConfig = {}) {
   const background = sceneConfig.background ?? defaultSceneConfig.background;
@@ -33,9 +33,17 @@ export function createScene(sceneConfig = {}) {
   };
 
   const canvas = document.getElementById('app');
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  // Antialiasing plus a high device-pixel-ratio framebuffer is expensive on
+  // iOS Safari. Keep desktop unchanged, but use a bounded mobile framebuffer.
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: !isMobile,
+    alpha: true,
+    powerPreference: 'high-performance'
+  });
+  renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5));
   renderer.setClearColor(new THREE.Color(background), 0);
 
   const scene = new THREE.Scene();
