@@ -21,10 +21,10 @@ import { initDrag } from './drag.js';
   const baseMeta = getModelMeta(base.name);
   const baseRadius = Number.isFinite(baseMeta?.radius) && baseMeta.radius > 0 ? baseMeta.radius : 1;
 
-  // Diagnostic iPhone build: load ONLY the base model. No accessories,
-  // alternate bases, or markers are decoded. This isolates whether Safari's
-  // crash is caused by the base GLB/WebGL renderer or by additional assets.
-  initTray({ accessories: [] });
+  // Mobile-safe test: show all seven tray items, but decode only ONE accessory
+  // after the base has rendered. This identifies whether even a single
+  // accessory GLB is enough to trigger the iPhone Safari crash.
+  initTray({ accessories });
 
   const baseCameraZ = camera.position.z;
   const fitDistance = fitCameraToModel(camera, model, {
@@ -46,7 +46,7 @@ import { initDrag } from './drag.js';
     camera,
     renderer,
     interaction: interactions,
-    accessories: [],
+    accessories,
     baseSize,
     baseRadius,
     baseSizeRank,
@@ -57,6 +57,11 @@ import { initDrag } from './drag.js';
     dragPlaneRadiusScale: base?.interaction?.dragPlaneRadiusScale
   });
 
+  // Diagnostic only: after the dog has been visible for a few seconds, load
+  // the first configured accessory and then stop. Do not load the other six.
+  // This keeps the seven-item UI intact while isolating the accessory problem.
+  void loadSingleAccessory(scene, accessories?.[0], baseSize, baseRadius, debug);
+
   let previousTime = 0;
   renderer.setAnimationLoop((time) => {
     const delta = (time - previousTime) / 1000;
@@ -65,6 +70,22 @@ import { initDrag } from './drag.js';
     renderer.render(scene, camera);
   });
 })();
+
+async function loadSingleAccessory(scene, entry, baseSize, baseRadius, debug) {
+  if (!entry) return;
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const model = await loadModel(scene, {
+    ...entry,
+    addToScene: false,
+    visible: false,
+    debug
+  });
+  if (!model) return;
+  const meta = getModelMeta(entry.name);
+  const accessoryRadius = Number.isFinite(meta?.radius) && meta.radius > 0 ? meta.radius : undefined;
+  const scale = scaleForEntry(entry, baseSize, baseRadius, accessoryRadius);
+  if (scale != null) model.scale.setScalar(scale);
+}
 
 function fitCameraToModel(camera, model, options = {}) {
   const padding = options.padding ?? 1.0;
@@ -96,4 +117,17 @@ function scaleZoomRange(interaction, baseDistance, fitDistance) {
   if (interaction.minZoom != null) next.minZoom = interaction.minZoom * scale;
   if (interaction.maxZoom != null) next.maxZoom = interaction.maxZoom * scale;
   return next;
+}
+
+function scaleForEntry(entry, baseSize, baseRadius, accessoryRadius) {
+  if (!entry || entry.objClass !== 'accessory') return undefined;
+  const base = Number.isFinite(baseSize) && baseSize > 0 ? baseSize : 1;
+  const size = Number.isFinite(entry.size) ? entry.size : null;
+  if (size === null) return undefined;
+  const relativeScale = size / base;
+  const radiusRatio = Number.isFinite(baseRadius) && Number.isFinite(accessoryRadius) && accessoryRadius > 0
+    ? baseRadius / accessoryRadius
+    : 1;
+  const finalScale = relativeScale * radiusRatio;
+  return Number.isFinite(finalScale) && finalScale > 0 ? finalScale : undefined;
 }
