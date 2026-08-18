@@ -7,6 +7,11 @@ import { createInteractionController } from './interaction.js';
 import { initTray } from './tray.js';
 import { initDrag } from './drag.js';
 
+// GitHub Pages serves this project from /new-gallery-3d-viewer/ rather than
+// the domain root. The drag system uses an absolute /sounds/... path, so
+// normalize audio URLs here without changing the existing drag logic.
+installAudioPathFix();
+
 (async () => {
   const { base, accessories, debug } = await loadObjectConfig();
   const { scene, renderer, camera } = createScene(base.scene);
@@ -47,6 +52,27 @@ import { initDrag } from './drag.js';
     renderer.render(scene, camera);
   });
 })();
+
+function installAudioPathFix() {
+  if (typeof window === 'undefined' || typeof window.Audio !== 'function') return;
+  if (window.__galleryAudioPathFixInstalled) return;
+
+  const NativeAudio = window.Audio;
+  const baseUrl = import.meta.env.BASE_URL || '/';
+
+  window.Audio = function GalleryAudio(src) {
+    const resolved = resolveAudioPath(src, baseUrl);
+    return new NativeAudio(resolved);
+  };
+  window.Audio.prototype = NativeAudio.prototype;
+  window.__galleryAudioPathFixInstalled = true;
+}
+
+function resolveAudioPath(src, baseUrl) {
+  if (typeof src !== 'string' || !src.startsWith('/sounds/')) return src;
+  const prefix = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  return `${prefix}${src}`;
+}
 
 async function loadAccessoryModel(scene, entry, baseSize, baseRadius, debug) {
   if (!entry?.name) return null;
