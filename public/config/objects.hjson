@@ -264,34 +264,34 @@ bear_ear: {
       ]
     }
 
-    // plunger2: {
-    //   objClass: "accessory"
-    //   modelPath: "/assets/objects/plunger2/plunger2.glb"
-    //   thumbnail: "/assets/objects/plunger2/plunger2_thumb.png"
-    //   displayName: "Plunger"
-    //   size: 1.25
-    //   sizeRank: 1
-    //   influence: { radius: 0.05 }
-    //   sockets: [
-    //     { id: "socket_c_0", role: "child", positionHint: "inside", rotationOffset: [0, 0, 0] }
-    //   ]
-    // }
+   plunger2: {
+  objClass: "accessory",
+  modelPath: "/assets/objects/plunger2/plunger2.glb",
+  thumbnail: "/assets/objects/plunger2/plunger2_thumb.png",
+  displayName: "Plunger",
+  size: 1.25,
+  sizeRank: 1,
+  influence: { radius: 0.05 },
+  sockets: [
+    { id: "socket_c_0", role: "child", positionHint: "inside", rotationOffset: [0, 0, 0] }
+  ]
+},
 
-    // wing: {
-    //   objClass: "accessory"
-    //   modelPath: "/assets/objects/wing/wing.glb"
-    //   thumbnail: "/assets/objects/wing/wing_thumb.png"
-    //   displayName: "Wing"
-    //   size: 2
-    //   sizeRank: 2
-    //   influence: { radius: 0.12 }
-    //   sockets: [
-    //     { id: "socket_c_0", role: "child", positionHint: "inside", rotationOffset: [0, 0, 0] }
-    //   ]
-    //   allowedSockets: {
-    //     hoon_dog: ["socket_p_7"]  // saddle/back only
-    //   }
-    // }
+wing: {
+  objClass: "accessory",
+  modelPath: "/assets/objects/wing/wing.glb",
+  thumbnail: "/assets/objects/wing/wing_thumb.png",
+  displayName: "Wing",
+  size: 2,
+  sizeRank: 2,
+  influence: { radius: 0.12 },
+  sockets: [
+    { id: "socket_c_0", role: "child", positionHint: "inside", rotationOffset: [0, 0, 0] }
+  ],
+  allowedSockets: {
+    hoon_dog: ["socket_p_7"]
+  }
+}
 
     marker: {
       objClass: "marker"
