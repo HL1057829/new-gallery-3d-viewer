@@ -2,10 +2,9 @@
 
 /**
  * Initialize the accessory thumbnail tray.
- * The visible tray intentionally contains exactly the seven user-facing
- * accessories: Full Face, Half Face, Piggy Face, Rabbit Ear, Rabbit Nose,
- * Bear Nose, and Plunger. Bear Ear remains available as an underlying model
- * but is not shown as a tray item.
+ * The visible tray contains the user-facing accessories: Full Face, Half Face,
+ * Piggy Face, Rabbit Ear, Rabbit Nose, Bear Nose, Plunger 1, Plunger 2, and Wing.
+ * Bear Ear remains available as an underlying model but is not shown as a tray item.
  */
 export function initTray({ accessories = [], loadAccessory = null } = {}) {
   const tray = document.getElementById('tray');
@@ -14,7 +13,7 @@ export function initTray({ accessories = [], loadAccessory = null } = {}) {
   tray.replaceChildren();
   if (accessories.length === 0) return;
 
-  // On phones the seven thumbnails can extend beyond the viewport. Make only
+  // On phones the thumbnails can extend beyond the viewport. Make only
   // the tray scrollable so every mask remains reachable; the canvas and 3D
   // interaction are otherwise untouched.
   if (isNarrowTouchDevice()) {
@@ -44,7 +43,9 @@ export function initTray({ accessories = [], loadAccessory = null } = {}) {
     'rabbit_ear',
     'rabbit_nose',
     'bear_nose',
-    'plunger1'
+    'plunger1',
+    'plunger2',
+    'wing'
   ];
 
   const byId = new Map(accessories.map((item) => [item.name, item]));
