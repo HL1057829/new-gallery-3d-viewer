@@ -291,7 +291,7 @@ wing: {
   allowedSockets: {
     hoon_dog: ["socket_p_7"]
   }
-}
+},
 
     marker: {
       objClass: "marker"
