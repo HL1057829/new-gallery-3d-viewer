@@ -3,8 +3,8 @@
 /**
  * Initialize the accessory thumbnail tray.
  * The visible tray contains the user-facing accessories: Full Face, Half Face,
- * Piggy Face, Rabbit Ear, Rabbit Nose, Bear Nose, Plunger 1, and Wing.
- * Bear Ear and Plunger 2 remain available as underlying models but are not shown as tray items.
+ * Piggy Face, Rabbit Ear, Rabbit Nose, Bear Nose, and Plunger 1.
+ * Bear Ear, Plunger 2, and Wing remain available as underlying models but are not shown as tray items.
  */
 export function initTray({ accessories = [], loadAccessory = null } = {}) {
   const tray = document.getElementById('tray');
@@ -43,8 +43,7 @@ export function initTray({ accessories = [], loadAccessory = null } = {}) {
     'rabbit_ear',
     'rabbit_nose',
     'bear_nose',
-    'plunger1',
-    'wing'
+    'plunger1'
   ];
 
   const byId = new Map(accessories.map((item) => [item.name, item]));
